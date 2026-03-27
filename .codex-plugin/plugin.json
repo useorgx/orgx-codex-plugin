@@ -1,0 +1,42 @@
+{
+  "name": "orgx-codex-plugin",
+  "version": "0.1.0",
+  "description": "OrgX MCP access and initiative-aware Codex skills for operating inside OrgX workstreams.",
+  "author": {
+    "name": "OrgX Team",
+    "url": "https://useorgx.com"
+  },
+  "homepage": "https://useorgx.com/integrations/mcp",
+  "repository": "https://github.com/useorgx/orgx-codex-plugin",
+  "license": "MIT",
+  "keywords": [
+    "orgx",
+    "codex",
+    "mcp",
+    "initiatives",
+    "workflow"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "OrgX for Codex",
+    "shortDescription": "Install OrgX MCP and initiative-aware workflows in Codex.",
+    "longDescription": "Bundles OrgX MCP configuration and Codex skills for initiative orchestration, runtime reporting, artifact registration, and human-in-the-loop decision flows.",
+    "developerName": "OrgX Team",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://useorgx.com",
+    "privacyPolicyURL": "https://useorgx.com/privacy",
+    "termsOfServiceURL": "https://useorgx.com/terms",
+    "defaultPrompt": [
+      "Use OrgX to show me what needs my approval right now.",
+      "Use OrgX to scaffold this goal into workstreams, milestones, and tasks."
+    ],
+    "brandColor": "#14B8A6",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
+  }
+}

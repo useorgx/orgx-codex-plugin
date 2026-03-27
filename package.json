@@ -1,0 +1,13 @@
+{
+  "name": "@useorgx/codex-plugin",
+  "version": "0.1.0",
+  "description": "OrgX Codex plugin with MCP access and initiative-aware skills",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/verify-plugin.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
