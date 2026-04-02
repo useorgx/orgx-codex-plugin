@@ -52,6 +52,19 @@ npm run check
 
 ## Install locally in Codex
 
+### Repo-local marketplace
+
+This repo now includes a marketplace file at
+`.agents/plugins/marketplace.json` that points directly at the plugin repo
+root. To test it in Codex:
+
+1. Open `/Users/hopeatina/Code/orgx-codex-plugin` in Codex.
+2. Restart Codex.
+3. Open `/plugins` and select the repo marketplace `orgx-local`.
+
+This is the fastest way to verify the plugin during development because it
+avoids copying the plugin into a separate plugins directory.
+
 The official docs recommend using the built-in `@plugin-creator` skill to
 scaffold local plugins and marketplace entries. That skill was not available in
 the environment used to create this repo, so this plugin was scaffolded
@@ -79,7 +92,7 @@ cp -R /absolute/path/to/orgx-codex-plugin ~/.codex/plugins/orgx-codex-plugin
       "name": "orgx-codex-plugin",
       "source": {
         "source": "local",
-        "path": "./plugins/orgx-codex-plugin"
+        "path": "./.codex/plugins/orgx-codex-plugin"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -92,6 +105,10 @@ cp -R /absolute/path/to/orgx-codex-plugin ~/.codex/plugins/orgx-codex-plugin
 ```
 
 3. Restart Codex and open `/plugins`.
+
+Because `~/.agents/plugins/marketplace.json` is resolved relative to your home
+directory, the plugin entry must point at `./.codex/plugins/...` if the plugin
+was copied under `~/.codex/plugins/`.
 
 ## MCP server behavior
 
