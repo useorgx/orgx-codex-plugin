@@ -6,6 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 const manifestPath = resolve(root, '.codex-plugin', 'plugin.json');
 const mcpPath = resolve(root, '.mcp.json');
+const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
 
 function fail(message) {
   console.error(`verify-plugin: ${message}`);
@@ -18,9 +19,11 @@ function readJson(path) {
 
 if (!existsSync(manifestPath)) fail('missing .codex-plugin/plugin.json');
 if (!existsSync(mcpPath)) fail('missing .mcp.json');
+if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json');
 
 const manifest = readJson(manifestPath);
 const mcp = readJson(mcpPath);
+const marketplace = readJson(marketplacePath);
 
 if (!manifest.name || typeof manifest.name !== 'string') {
   fail('manifest.name must be a non-empty string');
@@ -94,6 +97,43 @@ for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
   if (!existsSync(skillPath)) {
     fail(`missing skill: ${skillName}`);
   }
+}
+
+if (marketplace.name !== 'orgx-local') {
+  fail('marketplace.name must be orgx-local');
+}
+if (
+  !marketplace.interface ||
+  marketplace.interface.displayName !== 'OrgX Local'
+) {
+  fail('marketplace.interface.displayName must be OrgX Local');
+}
+if (!Array.isArray(marketplace.plugins) || marketplace.plugins.length !== 1) {
+  fail('marketplace.plugins must contain exactly one plugin entry');
+}
+
+const [pluginEntry] = marketplace.plugins;
+if (pluginEntry.name !== manifest.name) {
+  fail('marketplace plugin name must match manifest.name');
+}
+if (
+  !pluginEntry.source ||
+  pluginEntry.source.source !== 'local' ||
+  pluginEntry.source.path !== './'
+) {
+  fail('marketplace source must be local and point to ./');
+}
+if (
+  !pluginEntry.policy ||
+  pluginEntry.policy.installation !== 'AVAILABLE' ||
+  pluginEntry.policy.authentication !== 'ON_INSTALL'
+) {
+  fail(
+    'marketplace policy must set installation=AVAILABLE and authentication=ON_INSTALL',
+  );
+}
+if (pluginEntry.category !== 'Productivity') {
+  fail('marketplace category must be Productivity');
 }
 
 console.log('verify-plugin: ok');
