@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "node hooks/scripts/orgx-session-hook.mjs --event=SessionStart --source_client=codex"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "command": "node hooks/scripts/orgx-session-hook.mjs --event=UserPromptSubmit --source_client=codex"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "command": "node hooks/scripts/orgx-session-hook.mjs --event=PreToolUse --source_client=codex"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "command": "node hooks/scripts/orgx-session-hook.mjs --event=PostToolUse --source_client=codex"
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "command": "node hooks/scripts/orgx-session-hook.mjs --event=PermissionRequest --source_client=codex"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "node hooks/scripts/orgx-session-hook.mjs --event=Stop --source_client=codex"
+      }
+    ]
+  }
+}

@@ -7,6 +7,8 @@ const root = resolve(__dirname, '..');
 const manifestPath = resolve(root, '.codex-plugin', 'plugin.json');
 const mcpPath = resolve(root, '.mcp.json');
 const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
+const codexHooksPath = resolve(root, 'hooks', 'codex', 'hooks.json');
+const hookScriptPath = resolve(root, 'hooks', 'scripts', 'orgx-session-hook.mjs');
 
 function fail(message) {
   console.error(`verify-plugin: ${message}`);
@@ -20,10 +22,13 @@ function readJson(path) {
 if (!existsSync(manifestPath)) fail('missing .codex-plugin/plugin.json');
 if (!existsSync(mcpPath)) fail('missing .mcp.json');
 if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json');
+if (!existsSync(codexHooksPath)) fail('missing hooks/codex/hooks.json');
+if (!existsSync(hookScriptPath)) fail('missing hooks/scripts/orgx-session-hook.mjs');
 
 const manifest = readJson(manifestPath);
 const mcp = readJson(mcpPath);
 const marketplace = readJson(marketplacePath);
+const codexHooks = readJson(codexHooksPath);
 
 if (!manifest.name || typeof manifest.name !== 'string') {
   fail('manifest.name must be a non-empty string');
@@ -97,6 +102,41 @@ for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
   if (!existsSync(skillPath)) {
     fail(`missing skill: ${skillName}`);
   }
+}
+
+if (!codexHooks.hooks || typeof codexHooks.hooks !== 'object') {
+  fail('hooks/codex/hooks.json must define hooks');
+}
+for (const eventName of [
+  'SessionStart',
+  'UserPromptSubmit',
+  'PreToolUse',
+  'PostToolUse',
+  'PermissionRequest',
+  'Stop',
+]) {
+  const entries = codexHooks.hooks[eventName];
+  if (!Array.isArray(entries) || entries.length === 0) {
+    fail(`hooks/codex/hooks.json missing ${eventName}`);
+  }
+  const hasOrgxCommand = entries.some(
+    (entry) =>
+      entry &&
+      typeof entry.command === 'string' &&
+      entry.command.includes('orgx-session-hook.mjs') &&
+      entry.command.includes('--source_client=codex'),
+  );
+  if (!hasOrgxCommand) {
+    fail(`${eventName} must call orgx-session-hook.mjs with source_client=codex`);
+  }
+}
+
+const hookScript = readFileSync(hookScriptPath, 'utf8');
+if (!hookScript.includes('orgx_codex_plugin_runtime_hook')) {
+  fail('hook script must emit orgx_codex_plugin_runtime_hook records');
+}
+if (hookScript.includes('appendFileSync(outbox, raw')) {
+  fail('hook script must not persist raw hook payloads');
 }
 
 if (marketplace.name !== 'orgx-local') {
