@@ -2,7 +2,7 @@
 
 Codex plugin package for OrgX:
 
-- OrgX MCP server wiring via `https://mcp.useorgx.com/`
+- OrgX MCP server wiring via `https://mcp.useorgx.com/mcp`
 - Initiative-aware Codex skills for OrgX execution
 - Runtime reporting guidance and passive hook templates for progress, artifacts,
   blockers, and completion
@@ -152,21 +152,21 @@ was copied under `~/.codex/plugins/`.
 
 ## MCP server behavior
 
-The bundled `.mcp.json` config uses the hosted OrgX root URL:
+The bundled `.mcp.json` config uses the hosted OrgX streamable HTTP endpoint:
 
 ```json
 {
   "mcpServers": {
     "orgx": {
-      "command": "npx",
-      "args": ["mcp-remote", "https://mcp.useorgx.com/"]
+      "type": "http",
+      "url": "https://mcp.useorgx.com/mcp"
     }
   }
 }
 ```
 
-This follows current OrgX MCP docs, which recommend the hosted root URL for
-external clients and let OAuth happen in-browser on first use.
+This follows current OrgX MCP docs and lets OAuth happen in-browser on first
+use.
 
 ## Sources used
 

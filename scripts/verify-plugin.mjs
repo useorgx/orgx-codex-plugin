@@ -87,14 +87,11 @@ if (!mcp.mcpServers.orgx || typeof mcp.mcpServers.orgx !== 'object') {
 }
 
 const orgx = mcp.mcpServers.orgx;
-if (orgx.command !== 'npx') {
-  fail('mcpServers.orgx.command must be npx');
+if (orgx.type !== 'http') {
+  fail('mcpServers.orgx.type must be http');
 }
-if (!Array.isArray(orgx.args) || orgx.args[0] !== 'mcp-remote') {
-  fail('mcpServers.orgx.args must start with mcp-remote');
-}
-if (orgx.args[1] !== 'https://mcp.useorgx.com/') {
-  fail('mcpServers.orgx must target https://mcp.useorgx.com/');
+if (orgx.url !== 'https://mcp.useorgx.com/mcp') {
+  fail('mcpServers.orgx.url must target https://mcp.useorgx.com/mcp');
 }
 
 for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
@@ -174,6 +171,10 @@ if (
 }
 if (pluginEntry.category !== 'Productivity') {
   fail('marketplace category must be Productivity');
+}
+
+if (!manifest.interface.capabilities.includes('Interactive')) {
+  fail('manifest.interface.capabilities must include Interactive');
 }
 
 console.log('verify-plugin: ok');

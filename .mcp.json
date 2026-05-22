@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "orgx": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://mcp.useorgx.com/"
-      ]
+      "type": "http",
+      "url": "https://mcp.useorgx.com/mcp",
+      "note": "Hosted OrgX MCP server. Uses OAuth on first connection and exposes initiative, task, artifact, blocker, decision, runtime reporting, and organizational memory tools."
     }
   }
 }
