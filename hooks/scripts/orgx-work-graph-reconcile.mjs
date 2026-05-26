@@ -436,6 +436,18 @@ export function buildWorkGraphReport(recordsInput, options = {}) {
       prompt_chars: record.summary?.prompt_chars,
     },
   }));
+  const reportEvents = sourceEvents.map((event) => ({
+    source_client: event.source_client,
+    source_id: event.source_id,
+    source_label: event.source_label,
+    event_type: event.metadata?.tool_name ? "tool_signal" : "client_extraction",
+    evidence_ref: event.evidence_ref,
+    metadata: {
+      ...event.metadata,
+      occurred_at: event.occurred_at,
+      attribution_event_type: event.event_type,
+    },
+  }));
 
   const findings = [];
   if (records.length > 0) {
@@ -702,7 +714,7 @@ export function buildWorkGraphReport(recordsInput, options = {}) {
         : ["No OrgX MCP writeback signal detected in compact hook metadata."],
     },
     final_state: finalStateFor(records),
-    events: sourceEvents,
+    events: reportEvents,
     findings,
     missed_orchestration_opportunities: missedOrchestration,
     trails: [],
@@ -714,7 +726,7 @@ export function buildWorkGraphReport(recordsInput, options = {}) {
             title: "Promote hook outbox evidence",
             summary:
               "Review summary-only hook records and promote real decisions, blockers, artifacts, and goals into OrgX.",
-            action_type: "promote_runtime_evidence",
+            action_type: "connect_source",
             trail_ids: [],
             evidence_refs: [primaryEvidenceRef],
             priority: "p0",
@@ -790,6 +802,8 @@ export function buildWorkGraphReport(recordsInput, options = {}) {
     investigation: {
       schema_version: WORK_GRAPH_SCHEMA_VERSION,
       audit_id: `hook-outbox:${stableHash({ workspaceHash, generatedAt }, 16)}`,
+      fingerprint: workGraphFingerprint,
+      generated_at: generatedAt,
       raw_events_summary: {
         event_count: records.length,
         source_clients: sourceClients,
@@ -808,9 +822,28 @@ export function buildWorkGraphReport(recordsInput, options = {}) {
         hook_outbox: records.length ? 0.72 : 0,
       },
       why_not_100: orgxMcpCalled
-        ? ["Hook records are compact and need entity confirmation."]
-        : ["No OrgX MCP writeback signal was detected."],
+        ? [
+            {
+              code: "compact_hook_records",
+              summary: "Hook records are compact and need entity confirmation.",
+            },
+          ]
+        : [
+            {
+              code: "missing_orgx_mcp_writeback",
+              summary: "No OrgX MCP writeback signal was detected.",
+            },
+          ],
       counterfactuals: [],
+      verification_log: [
+        {
+          step: "load_hook_outbox",
+          status: "passed",
+          records_read: records.length,
+          records_skipped: options.recordsSkipped || 0,
+        },
+      ],
+      critic_log: [],
       verification_log_summary: {
         total: records.length,
         passed: records.length,
@@ -903,6 +936,7 @@ export async function main({
     workspaceCwd: pickString(args.cwd, env.ORGX_WORKSPACE_CWD),
     workspaceName: pickString(args.workspace_name, args["workspace-name"]),
     workspaceId: pickString(args.workspace_id, args["workspace-id"]),
+    recordsSkipped: loaded.skipped,
   });
 
   const result = {
