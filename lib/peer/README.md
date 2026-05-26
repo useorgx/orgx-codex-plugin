@@ -1,6 +1,6 @@
 # OrgX Peer Sidecar for Codex
 
-This folder adds a **peer sidecar** to `@useorgx/codex-plugin` so OrgX can dispatch tasks to the user's local `codex` CLI session. The existing skill catalog under `skills/` is shared; the peer spawns `codex run --format ndjson` with the rendered prompt.
+This folder adds a **peer sidecar** to `@useorgx/codex-plugin` so OrgX can dispatch tasks to the user's local `codex` CLI session. The existing skill catalog under `skills/` is shared; the peer spawns `codex exec --json --skip-git-repo-check` with the rendered prompt and translates Codex JSONL lifecycle events into OrgX peer messages.
 
 ## Run
 

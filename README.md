@@ -30,6 +30,7 @@ skills/orgx-initiative-ops/SKILL.md
 skills/orgx-runtime-reporting/SKILL.md
 hooks/codex/hooks.json
 hooks/scripts/orgx-session-hook.mjs
+hooks/scripts/orgx-work-graph-reconcile.mjs
 assets/icon.png
 assets/logo.png
 scripts/verify-plugin.mjs
@@ -55,22 +56,37 @@ preserve existing `notify` integrations such as Computer Use, and write a local
 outbox under `~/.config/useorgx/wizard/hooks/events.jsonl`.
 
 Hook events are a passive backstop. They record compact session metadata and
-safe summaries so a later Work Graph reconciliation can answer:
+safe summaries so Work Graph reconciliation can answer:
 
 - Did the session call OrgX MCP?
 - Did meaningful work happen without OrgX writeback?
 - Are there decisions, blockers, artifacts, people, product surfaces, or goals
   that should become an OrgX initiative kickoff?
 
-Each reconciliation report should also emit a stable `work_graph_fingerprint`
-and `signup_hydration.hydration_key`. That fingerprint is the bridge between a
-pre-signup audit/share surface and the user's future OrgX workspace: after
-signup, OrgX can claim the fingerprint, dedupe replays, and attach the redacted
-Work Graph to a kickoff initiative.
+This package includes `orgx-codex-reconcile-hooks`, a local reconciler that
+reads the hook outbox and emits a summary-only Work Graph report with a stable
+`work_graph_fingerprint` and `signup_hydration.hydration_key`. That fingerprint
+is the bridge between a pre-signup audit/share surface and the user's future
+OrgX workspace: after signup, OrgX can claim the fingerprint, dedupe replays,
+and attach the redacted Work Graph to a kickoff initiative.
 
 Raw transcripts are not sent by the hook template. The reconciler should keep
 transcripts local and write only redacted summaries, hashes, evidence refs,
 Work Graph fingerprints, and approved OrgX activity.
+
+Dry-run reconciliation does not require OrgX credentials:
+
+```bash
+orgx-codex-reconcile-hooks \
+  --outbox ~/.config/useorgx/wizard/hooks/events.jsonl \
+  --output /tmp/orgx-work-graph-report.json
+```
+
+To publish the report to OrgX, provide an API key and opt in explicitly:
+
+```bash
+ORGX_API_KEY=oxk_... orgx-codex-reconcile-hooks --post
+```
 
 ## Local verification
 

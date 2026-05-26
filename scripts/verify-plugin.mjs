@@ -4,11 +4,19 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
+const packagePath = resolve(root, 'package.json');
+const peerManifestPath = resolve(root, 'plugin.manifest.json');
 const manifestPath = resolve(root, '.codex-plugin', 'plugin.json');
 const mcpPath = resolve(root, '.mcp.json');
 const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
 const codexHooksPath = resolve(root, 'hooks', 'codex', 'hooks.json');
 const hookScriptPath = resolve(root, 'hooks', 'scripts', 'orgx-session-hook.mjs');
+const hookReconcilerPath = resolve(
+  root,
+  'hooks',
+  'scripts',
+  'orgx-work-graph-reconcile.mjs',
+);
 
 function fail(message) {
   console.error(`verify-plugin: ${message}`);
@@ -19,12 +27,19 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
+if (!existsSync(packagePath)) fail('missing package.json');
+if (!existsSync(peerManifestPath)) fail('missing plugin.manifest.json');
 if (!existsSync(manifestPath)) fail('missing .codex-plugin/plugin.json');
 if (!existsSync(mcpPath)) fail('missing .mcp.json');
 if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json');
 if (!existsSync(codexHooksPath)) fail('missing hooks/codex/hooks.json');
 if (!existsSync(hookScriptPath)) fail('missing hooks/scripts/orgx-session-hook.mjs');
+if (!existsSync(hookReconcilerPath)) {
+  fail('missing hooks/scripts/orgx-work-graph-reconcile.mjs');
+}
 
+const pkg = readJson(packagePath);
+const peerManifest = readJson(peerManifestPath);
 const manifest = readJson(manifestPath);
 const mcp = readJson(mcpPath);
 const marketplace = readJson(marketplacePath);
@@ -35,6 +50,20 @@ if (!manifest.name || typeof manifest.name !== 'string') {
 }
 if (!manifest.version || typeof manifest.version !== 'string') {
   fail('manifest.version must be a non-empty string');
+}
+if (pkg.version !== manifest.version) {
+  fail('package.json version must match .codex-plugin/plugin.json version');
+}
+if (peerManifest.version !== pkg.version) {
+  fail('plugin.manifest.json version must match package.json version');
+}
+if (!Array.isArray(peerManifest.capabilities)) {
+  fail('plugin.manifest.json capabilities must be an array');
+}
+for (const capability of ['plugin:heartbeat', 'plugin:runtime_hooks', 'work_graph:reconcile']) {
+  if (!peerManifest.capabilities.includes(capability)) {
+    fail(`plugin.manifest.json missing capability: ${capability}`);
+  }
 }
 if (!manifest.description || typeof manifest.description !== 'string') {
   fail('manifest.description must be a non-empty string');
@@ -134,6 +163,45 @@ if (!hookScript.includes('orgx_codex_plugin_runtime_hook')) {
 }
 if (hookScript.includes('appendFileSync(outbox, raw')) {
   fail('hook script must not persist raw hook payloads');
+}
+
+const hookReconciler = readFileSync(hookReconcilerPath, 'utf8');
+for (const expected of [
+  'work_graph_fingerprint',
+  'signup_hydration',
+  'raw_transcripts_sent: false',
+  'raw_transcripts_excluded: true',
+]) {
+  if (!hookReconciler.includes(expected)) {
+    fail(`hook reconciler must include ${expected}`);
+  }
+}
+if (
+  !pkg.bin ||
+  pkg.bin['orgx-codex-reconcile-hooks'] !==
+    'hooks/scripts/orgx-work-graph-reconcile.mjs'
+) {
+  fail('package bin must expose orgx-codex-reconcile-hooks');
+}
+if (!Array.isArray(pkg.files)) {
+  fail('package.json must define a publish files allowlist');
+}
+for (const expectedPath of [
+  '.codex-plugin/',
+  'hooks/codex/',
+  'hooks/scripts/orgx-session-hook.mjs',
+  'hooks/scripts/orgx-work-graph-reconcile.mjs',
+  'lib/peer/peer.mjs',
+  'skills/',
+]) {
+  if (!pkg.files.includes(expectedPath)) {
+    fail(`package files allowlist missing ${expectedPath}`);
+  }
+}
+for (const forbiddenPath of ['.codex/', 'AGENTS.md', 'hooks/scripts/orgx-session-hook.test.mjs']) {
+  if (pkg.files.includes(forbiddenPath)) {
+    fail(`package files allowlist must not include local/test artifact ${forbiddenPath}`);
+  }
 }
 
 if (marketplace.name !== 'orgx-local') {

@@ -1,9 +1,14 @@
 {
   "plugin_name": "@useorgx/codex-plugin",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "manifest_fingerprint": "",
   "signature": "",
-  "capabilities": ["gateway:drive", "plugin:heartbeat"],
+  "capabilities": [
+    "gateway:drive",
+    "plugin:heartbeat",
+    "plugin:runtime_hooks",
+    "work_graph:reconcile"
+  ],
   "driver_ids": ["codex"],
   "notes": "fingerprint + signature populated by the npm prepublish step; dev builds ship unsigned and receive 'degraded' status from the OrgX server in permissive mode."
 }
