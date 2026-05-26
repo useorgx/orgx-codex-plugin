@@ -5,15 +5,34 @@
   "type": "module",
   "private": true,
   "bin": {
-    "orgx-codex-peer": "lib/peer/cli.mjs"
+    "orgx-codex-peer": "lib/peer/cli.mjs",
+    "orgx-codex-reconcile-hooks": "hooks/scripts/orgx-work-graph-reconcile.mjs"
   },
   "exports": {
     ".": "./lib/peer/peer.mjs",
     "./peer": "./lib/peer/peer.mjs"
   },
+  "files": [
+    ".agents/plugins/marketplace.json",
+    ".codex-plugin/",
+    ".mcp.json",
+    "assets/",
+    "hooks/codex/",
+    "hooks/scripts/orgx-session-hook.mjs",
+    "hooks/scripts/orgx-work-graph-reconcile.mjs",
+    "lib/peer/cli.mjs",
+    "lib/peer/CodexDriver.mjs",
+    "lib/peer/peer.mjs",
+    "lib/peer/README.md",
+    "plugin.manifest.json",
+    "scripts/verify-plugin.mjs",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "check": "node scripts/verify-plugin.mjs",
-    "test": "node --test lib/peer/peer.test.mjs",
+    "test": "node --test lib/peer/peer.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs",
     "peer:start": "node lib/peer/cli.mjs"
   },
   "dependencies": {
