@@ -123,6 +123,10 @@ test("buildWorkGraphReport emits stable summary-only hydration shape", () => {
   assert.equal(reportA.source_client, "wizard");
   assert.equal(reportA.raw_transcripts_sent, false);
   assert.equal(reportA.investigation.raw_transcripts_excluded, true);
+  assert.equal(reportA.investigation.fingerprint, reportA.work_graph_fingerprint);
+  assert.equal(reportA.investigation.generated_at, NOW);
+  assert.equal(typeof reportA.investigation.why_not_100[0], "object");
+  assert.equal(reportA.events[0].event_type, "tool_signal");
   assert.equal(reportA.source_coverage.orgxMcpCalled, false);
   assert.equal(reportA.final_state, "completed");
   assert.ok(reportA.findings.some((finding) => finding.type === "action"));
