@@ -68,8 +68,9 @@ that the client actually exposes:
 - Claude Code: taps lifecycle hooks through the separate Claude plugin and has
   direct MCP readout proof in the local CLI.
 - Cursor: has MCP tools plus rules/commands, but no equivalent passive
-  lifecycle hook package here. Cursor reporting quality depends on durable MCP
-  auth and stable tool listing.
+  lifecycle hook package here. Cursor now has a repo-local `OrgX: Morning Brief`
+  command, but reporting quality still depends on durable MCP auth and stable
+  tool listing.
 
 ## Coverage Matrix
 
@@ -78,7 +79,7 @@ that the client actually exposes:
 | Codex | `orgx-codex-plugin` bundles `.mcp.json`, skills, local marketplace metadata, passive hook templates, peer sidecar, and Work Graph reconciler. | Installed local hook coverage is now proven for `Stop`: `~/.codex/hooks.json` writes the OrgX outbox, runs `orgx-reconcile-hook.mjs`, and preserves the existing notify hook. Package tests also cover `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, and `Stop`. Current Codex sessions may still expose only compatibility app tools. | Preferred: `get_operator_chronicle`. Fallback: `_orgx_recommend` / `orgx_recommend` with `mode: "morning_brief"`. | Prove direct callable exposure after plugin refresh. Add client-side evidence when bootstrap advertises `get_operator_chronicle` but the active tool list omits it. |
 | ChatGPT | Hosted OrgX MCP / Apps SDK app through `https://mcp.useorgx.com/mcp`; widgets and tool descriptors live in the MCP server, not this Codex plugin. Live `server.json` exposes 29 tools including `get_operator_chronicle`. | No local lifecycle hook channel in this package. ChatGPT relies on app tool scanning, app approval, action controls, and widget resources. | Preferred: ChatGPT app tool `get_operator_chronicle` after Scan Tools / Refresh. Fallback: app tool `orgx_recommend` with `mode: "morning_brief"` if the scan is stale. | Verify the ChatGPT draft/published app action list includes the new direct tool. Current UI proof is blocked: Chrome is not logged into ChatGPT, native ChatGPT app inspection is unavailable to Codex, and the logged-in Arc browser state is unsafe for automation until an unrelated LinkedIn edit modal is cleared. |
 | Claude Code | Separate Claude Code config/plugin path is required. Claude Code supports lifecycle hooks and MCP tool hooks, but this package only ships Codex hook JSON. | Separate `orgx-claude-code-plugin` install is verified at `0.1.3`: it emits reporting events on `SessionStart`, `PostToolUse`, `SubagentStop`, and `Stop`, then runs non-blocking local Work Graph reconciliation on Claude `Stop`. Claude Code `2.1.165` now has the user-scoped local `orgx` MCP entry connected and a fresh noninteractive direct readout succeeded through `mcp__orgx__get_operator_chronicle`. | Preferred: Claude MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. | Keep monitoring hook reliability: one `claude mcp get orgx` run reported a cancelled `SessionEnd` hook even while MCP auth was connected. |
-| Cursor | Hosted OrgX MCP is configured in `~/.cursor/mcp.json`, and repo-local Cursor overlay files exist under `.cursor/orgx`, `.cursor/rules`, and `.cursor/commands`. | Direct MCP tool surface is viable but auth is volatile. On 2026-06-05, `cursor-agent mcp list-tools orgx` first required OAuth; after `cursor-agent mcp login orgx`, it returned 29 tools including direct `get_operator_chronicle`. Cursor exposes MCP tools and rules/commands, not a matching passive lifecycle hook package here. | Preferred: Cursor MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. | Resolve the CLI inconsistency where `cursor-agent mcp list` reports no configured servers while `cursor-agent mcp list-tools orgx` succeeds, and make OAuth/session persistence durable enough that the user does not have to re-login for reporting clarity. |
+| Cursor | Hosted OrgX MCP is configured in `~/.cursor/mcp.json`, and repo-local Cursor overlay files exist under `.cursor/orgx`, `.cursor/rules`, and `.cursor/commands`. PR #1732 added `OrgX: Morning Brief` to the repo-local overlay. | Direct MCP tool surface is viable but auth is volatile. On 2026-06-05, `cursor-agent mcp list-tools orgx` first required OAuth; after `cursor-agent mcp login orgx`, it returned 29 tools including direct `get_operator_chronicle`. Later the same day, a fresh check required `cursor-agent mcp login orgx` again. Cursor exposes MCP tools and rules/commands, not a matching passive lifecycle hook package here. | Preferred: Cursor MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. Repo command: `OrgX: Morning Brief`. | Resolve the CLI inconsistency where `cursor-agent mcp list` reports no configured servers while `cursor-agent mcp list-tools orgx` can still succeed, and make OAuth/session persistence durable enough that the user does not have to re-login for reporting clarity. |
 
 ## Evidence Gates
 
@@ -101,7 +102,7 @@ current evidence:
 
 ## Current Evidence Snapshot
 
-Last checked: 2026-06-05 09:58 America/Chicago.
+Last checked: 2026-06-05 10:18 America/Chicago.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -148,12 +149,18 @@ Last checked: 2026-06-05 09:58 America/Chicago.
 - Cursor global MCP config at `~/.cursor/mcp.json` includes an `orgx` server
   pointing at `mcp.useorgx.com`. The repo-local OrgX Cursor overlay includes
   `.cursor/orgx/manifest.json`, `.cursor/rules/orgx-execution-loop.mdc`, and
-  OrgX command prompts for start/resume/proof/decision review. On a fresh check,
-  `cursor-agent mcp list-tools orgx` required OAuth. After
-  `cursor-agent mcp login orgx`, `cursor-agent mcp list-tools orgx` returned
-  29 tools including direct `get_operator_chronicle`; `cursor-agent mcp list`
-  still reported no configured servers, so list-tool proof is stronger than the
-  summary-list command for this CLI version.
+  OrgX command prompts for start/resume/morning-brief/proof/decision review.
+  PR #1732 (`https://github.com/hopeatina/orgx/pull/1732`) merged
+  `OrgX: Morning Brief`, which instructs Cursor to call
+  `get_operator_chronicle` first and only use `orgx_recommend` with
+  `mode="morning_brief"` as a fallback. Verification included manifest
+  validation, `tests/api.client-bootstrap.route.spec.ts`, commit-hook
+  typecheck/lint-budget, pre-push `benchmark:prove`, provider-auth checks, and
+  successful Vercel deployment `dpl_22askxJ46TmZR3jNhCLk6zow3YLV`.
+  Cursor auth durability is still not closed: `cursor-agent mcp list` still
+  reported no configured servers, and a fresh
+  `cursor-agent mcp list-tools orgx` check after PR #1732 required
+  `cursor-agent mcp login orgx` again.
 - ChatGPT server/submission metadata is aligned with the direct chronicle tool,
   but action-list proof is not complete. Current live UI verification is blocked
   by client access rather than MCP metadata: Chrome is logged out, the native
