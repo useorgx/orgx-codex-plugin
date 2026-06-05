@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "lastCheckedAt": "2026-06-05T10:31:00-05:00",
+  "purpose": "Machine-readable gates for the OrgX operator chronicle plugin UX.",
+  "requiredReadoutFields": [
+    "reportingNarrative.briefMarkdown",
+    "decisionChronology",
+    "artifactLedger",
+    "prVelocity",
+    "initiatives",
+    "goals",
+    "dataGaps",
+    "topPriorities"
+  ],
+  "acceptableRoutes": [
+    {
+      "id": "direct_mcp_readout",
+      "description": "Client exposes get_operator_chronicle and calls it in-session.",
+      "requiredEvidence": [
+        "active callable tool list includes get_operator_chronicle",
+        "tool result includes every requiredReadoutFields entry"
+      ]
+    },
+    {
+      "id": "mcp_morning_brief_fallback",
+      "description": "Client has stale schema or wrapper-only tools and calls orgx_recommend mode=morning_brief.",
+      "requiredEvidence": [
+        "result source_tool is get_operator_chronicle",
+        "result includes reportingNarrative.briefMarkdown",
+        "result includes every requiredReadoutFields entry"
+      ]
+    },
+    {
+      "id": "passive_hook_reconciliation",
+      "description": "Client lifecycle hook reconciles missed local evidence after the fact.",
+      "requiredEvidence": [
+        "raw_transcripts_sent is false",
+        "work_graph_fingerprint is present",
+        "a later MCP readout is still available for live reporting"
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "id": "hosted_mcp_descriptor",
+      "client": "server",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "Bootstrap returned server_version 0.3.0-1b087831, visible_tools_count 29, and visible_tools including get_operator_chronicle.",
+      "nextStep": "Keep server.json and bootstrap descriptors aligned with get_operator_chronicle."
+    },
+    {
+      "id": "codex_direct_tool_exposure",
+      "client": "codex",
+      "status": "open",
+      "route": "direct_mcp_readout",
+      "evidence": "This active Codex session still exposes only mcp__codex_apps__orgx wrapper tools even though bootstrap advertises get_operator_chronicle.",
+      "nextStep": "Capture a refreshed Codex plugin session where get_operator_chronicle is directly callable, or file the client schema-refresh gap with bootstrap/tool-list evidence."
+    },
+    {
+      "id": "codex_morning_brief_fallback",
+      "client": "codex",
+      "status": "verified",
+      "route": "mcp_morning_brief_fallback",
+      "evidence": "_orgx_recommend mode=morning_brief returned ok=true, source_tool=get_operator_chronicle, reportingNarrative.briefMarkdown, chronology, artifacts, PR velocity, goals, initiatives, priorities, and data gaps.",
+      "nextStep": "Keep the default prompt and skills routing users to this fallback until direct tool exposure is proven."
+    },
+    {
+      "id": "codex_stop_reconciliation",
+      "client": "codex",
+      "status": "verified",
+      "route": "passive_hook_reconciliation",
+      "evidence": "Installed Stop hook writes summary-only Work Graph reports with raw_transcripts_sent=false and work_graph_fingerprint present.",
+      "nextStep": "Keep hook reconciliation non-blocking and treat it as evidence capture, not the live report UX."
+    },
+    {
+      "id": "chatgpt_action_list",
+      "client": "chatgpt",
+      "status": "blocked_by_client_access",
+      "route": "direct_mcp_readout",
+      "evidence": "Hosted MCP metadata is aligned, but current UI proof is blocked because Chrome is logged out, native ChatGPT app inspection is unavailable to Codex, and the logged-in Arc state is unsafe for automation until an unrelated modal is cleared.",
+      "nextStep": "Refresh the ChatGPT app tool scan and verify get_operator_chronicle in the app action list."
+    },
+    {
+      "id": "claude_direct_readout",
+      "client": "claude-code",
+      "status": "monitoring",
+      "route": "direct_mcp_readout",
+      "evidence": "claude mcp get orgx returned Connected cleanly on 2026-06-05 10:31 CDT. A fresh noninteractive direct smoke in this turn hung and was killed, so this turn only proves config health; earlier direct readout proof remains historical evidence.",
+      "nextStep": "Repeat a bounded noninteractive get_operator_chronicle smoke and watch for Stop/SessionEnd hook warnings."
+    },
+    {
+      "id": "cursor_morning_brief_command",
+      "client": "cursor",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "Repo-local OrgX: Morning Brief command was merged in OrgX PR #1732 and instructs Cursor to call get_operator_chronicle first, with orgx_recommend mode=morning_brief fallback.",
+      "nextStep": "Keep the command aligned with the readout fields and fallback contract."
+    },
+    {
+      "id": "cursor_auth_durability",
+      "client": "cursor",
+      "status": "open",
+      "route": "direct_mcp_readout",
+      "evidence": "cursor-agent mcp list-tools orgx required login again after PR #1732, and cursor-agent mcp list still reported no configured servers.",
+      "nextStep": "Resolve Cursor CLI list/list-tools inconsistency and make OAuth/session persistence durable."
+    },
+    {
+      "id": "accepted_goal_links_live_data",
+      "client": "orgx-app",
+      "status": "open",
+      "route": "direct_mcp_readout",
+      "evidence": "The accepted-goal writer shipped in OrgX PR #1728, but the live chronicle still reports no active user_goals or open workspace goals and falls back to pending goals_orchestrator decisions.",
+      "nextStep": "Verify accepted goal decisions exist in live data as first-class goals and remove the provisional fallback gap from the chronicle."
+    }
+  ]
+}

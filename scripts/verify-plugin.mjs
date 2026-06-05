@@ -10,6 +10,7 @@ const manifestPath = resolve(root, '.codex-plugin', 'plugin.json');
 const mcpPath = resolve(root, '.mcp.json');
 const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
 const clientHookCoveragePath = resolve(root, 'docs', 'client-hook-coverage.md');
+const operatorReportingGatesPath = resolve(root, 'docs', 'operator-reporting-gates.json');
 const codexHooksPath = resolve(root, 'hooks', 'codex', 'hooks.json');
 const hookScriptPath = resolve(root, 'hooks', 'scripts', 'orgx-session-hook.mjs');
 const stopReconcileHookPath = resolve(root, 'hooks', 'scripts', 'orgx-reconcile-hook.mjs');
@@ -35,6 +36,7 @@ if (!existsSync(manifestPath)) fail('missing .codex-plugin/plugin.json');
 if (!existsSync(mcpPath)) fail('missing .mcp.json');
 if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json');
 if (!existsSync(clientHookCoveragePath)) fail('missing docs/client-hook-coverage.md');
+if (!existsSync(operatorReportingGatesPath)) fail('missing docs/operator-reporting-gates.json');
 if (!existsSync(codexHooksPath)) fail('missing hooks/codex/hooks.json');
 if (!existsSync(hookScriptPath)) fail('missing hooks/scripts/orgx-session-hook.mjs');
 if (!existsSync(stopReconcileHookPath)) fail('missing hooks/scripts/orgx-reconcile-hook.mjs');
@@ -48,6 +50,7 @@ const manifest = readJson(manifestPath);
 const mcp = readJson(mcpPath);
 const marketplace = readJson(marketplacePath);
 const codexHooks = readJson(codexHooksPath);
+const operatorReportingGates = readJson(operatorReportingGatesPath);
 const clientHookCoverage = readFileSync(clientHookCoveragePath, 'utf8');
 
 if (!manifest.name || typeof manifest.name !== 'string') {
@@ -168,6 +171,75 @@ for (const expected of [
   }
 }
 
+if (operatorReportingGates.schemaVersion !== 1) {
+  fail('operator reporting gates schemaVersion must be 1');
+}
+if (!Array.isArray(operatorReportingGates.requiredReadoutFields)) {
+  fail('operator reporting gates must define requiredReadoutFields');
+}
+for (const expected of [
+  'reportingNarrative.briefMarkdown',
+  'decisionChronology',
+  'artifactLedger',
+  'prVelocity',
+  'initiatives',
+  'goals',
+  'dataGaps',
+  'topPriorities',
+]) {
+  if (!operatorReportingGates.requiredReadoutFields.includes(expected)) {
+    fail(`operator reporting gates missing readout field: ${expected}`);
+  }
+}
+if (!Array.isArray(operatorReportingGates.acceptableRoutes)) {
+  fail('operator reporting gates must define acceptableRoutes');
+}
+for (const expected of [
+  'direct_mcp_readout',
+  'mcp_morning_brief_fallback',
+  'passive_hook_reconciliation',
+]) {
+  if (!operatorReportingGates.acceptableRoutes.some((route) => route.id === expected)) {
+    fail(`operator reporting gates missing route: ${expected}`);
+  }
+}
+if (!Array.isArray(operatorReportingGates.gates)) {
+  fail('operator reporting gates must define gates');
+}
+const gatesById = new Map(operatorReportingGates.gates.map((gate) => [gate.id, gate]));
+for (const expected of [
+  'hosted_mcp_descriptor',
+  'codex_direct_tool_exposure',
+  'codex_morning_brief_fallback',
+  'codex_stop_reconciliation',
+  'chatgpt_action_list',
+  'claude_direct_readout',
+  'cursor_morning_brief_command',
+  'cursor_auth_durability',
+  'accepted_goal_links_live_data',
+]) {
+  if (!gatesById.has(expected)) {
+    fail(`operator reporting gates missing gate: ${expected}`);
+  }
+}
+for (const gate of operatorReportingGates.gates) {
+  if (!gate.id || !gate.client || !gate.status || !gate.route || !gate.evidence || !gate.nextStep) {
+    fail(`operator reporting gate ${gate.id ?? '<unknown>'} must include id, client, status, route, evidence, and nextStep`);
+  }
+}
+if (gatesById.get('codex_direct_tool_exposure').status === 'verified') {
+  fail('codex_direct_tool_exposure must not be marked verified until direct callable exposure is proven');
+}
+if (gatesById.get('chatgpt_action_list').status === 'verified') {
+  fail('chatgpt_action_list must not be marked verified until app action-list UI proof exists');
+}
+if (gatesById.get('cursor_auth_durability').status === 'verified') {
+  fail('cursor_auth_durability must not be marked verified until repeated list-tools calls work without login');
+}
+if (gatesById.get('accepted_goal_links_live_data').status === 'verified') {
+  fail('accepted_goal_links_live_data must not be marked verified while the chronicle reports provisional goal signals');
+}
+
 for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
   const skillPath = resolve(root, 'skills', skillName, 'SKILL.md');
   if (!existsSync(skillPath)) {
@@ -273,6 +345,7 @@ for (const expectedPath of [
   'hooks/scripts/orgx-session-hook.mjs',
   'hooks/scripts/orgx-work-graph-reconcile.mjs',
   'docs/client-hook-coverage.md',
+  'docs/operator-reporting-gates.json',
   'lib/peer/peer.mjs',
   'skills/',
 ]) {

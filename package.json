@@ -22,6 +22,7 @@
     "hooks/scripts/orgx-session-hook.mjs",
     "hooks/scripts/orgx-work-graph-reconcile.mjs",
     "docs/client-hook-coverage.md",
+    "docs/operator-reporting-gates.json",
     "lib/peer/cli.mjs",
     "lib/peer/CodexDriver.mjs",
     "lib/peer/peer.mjs",

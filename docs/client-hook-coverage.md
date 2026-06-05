@@ -102,7 +102,7 @@ current evidence:
 
 ## Current Evidence Snapshot
 
-Last checked: 2026-06-05 10:18 America/Chicago.
+Last checked: 2026-06-05 10:31 America/Chicago.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -116,6 +116,11 @@ Last checked: 2026-06-05 10:18 America/Chicago.
   `0.3.0-1b087831`, `visible_tools_count: 29`, and `visible_tools` including
   `get_operator_chronicle`; the active Codex namespace still exposed only the
   underscore wrapper tools in this session.
+- `docs/operator-reporting-gates.json` now records the reporting proof gates as
+  machine-readable status, route, evidence, and next-step entries. The plugin
+  verifier fails if open gates such as Codex direct tool exposure, ChatGPT
+  action-list proof, Cursor auth durability, or accepted-goal live data are
+  accidentally marked verified without evidence.
 - `~/.codex/hooks.json` has a Codex `Stop` sequence with the OrgX session hook,
   the OrgX reconcile hook, and the existing notify hook.
 - Running the installed Stop reconcile command wrote
@@ -138,14 +143,17 @@ Last checked: 2026-06-05 10:18 America/Chicago.
   `work_graph_fingerprint: wgf_928a73d6ddb93f28527167da`, and
   `posted: false`.
 - Claude Code `2.1.165` now reports the user-scoped local `orgx` server as
-  `Connected`. A fresh noninteractive smoke test with
+  `Connected`. A fresh `claude mcp get orgx` check at 2026-06-05 10:31
+  America/Chicago returned connected cleanly with no cancelled hook warning.
+  A prior noninteractive smoke test with
   `--allowedTools mcp__orgx__get_operator_chronicle` and
   `--output-format json` exited successfully and returned
   `tool_used: "mcp__orgx__get_operator_chronicle"`, `has_briefMarkdown: true`,
   headline `275 items need a decision or unblock`, 6 top priorities, 8 pending
   decisions, 23 resolved decisions in 30 days, 53 artifacts, 4 goals, and 1
   data gap. This closes the Claude direct-readout gate for the current local
-  CLI session.
+  CLI session historically; a repeat direct noninteractive smoke in this turn
+  hung and was terminated, so this snapshot only refreshes Claude config health.
 - Cursor global MCP config at `~/.cursor/mcp.json` includes an `orgx` server
   pointing at `mcp.useorgx.com`. The repo-local OrgX Cursor overlay includes
   `.cursor/orgx/manifest.json`, `.cursor/rules/orgx-execution-loop.mdc`, and
