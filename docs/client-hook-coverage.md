@@ -72,6 +72,13 @@ that the client actually exposes:
   command, but reporting quality still depends on durable MCP auth and stable
   tool listing.
 
+This same hook-fit audit is encoded in
+`docs/operator-reporting-gates.json` under `clientHookSurfaces`. The package
+verifier fails if any client lacks a declared best available surface, direct
+readout path, fallback path, passive hook support level, sufficiency state, and
+current gap. That keeps "alternatives exist" separate from "this plugin has
+actually tapped the strongest native hook/action surface this client exposes."
+
 ## Coverage Matrix
 
 | Client | Current OrgX surface | Hook/support level | Chronicle route | Missing for seamless UX |
