@@ -11,6 +11,9 @@ Use this skill when the task is tied to OrgX execution state rather than just lo
 
 1. Orient before editing:
 - Call the OrgX workspace or initiative summary tools first.
+- For broad status/reporting questions, prefer `get_operator_chronicle` first
+  when available; it is the canonical decision, artifact, PR, goal, gap, and
+  priority readout.
 - If an initiative, workstream, task, blocker, or decision is named, treat OrgX as the source of truth for current status.
 
 2. Reuse existing context before creating new structure:

@@ -74,6 +74,16 @@ if (manifest.skills !== './skills/') {
 if (manifest.mcpServers !== './.mcp.json') {
   fail('manifest.mcpServers must point to ./.mcp.json');
 }
+if (
+  !manifest.interface.defaultPrompt?.some((prompt) =>
+    /operator chronicle/i.test(prompt)
+  )
+) {
+  fail('defaultPrompt must include an operator chronicle reporting prompt');
+}
+if (!manifest.interface.longDescription.includes('operator chronicle reporting')) {
+  fail('longDescription must mention operator chronicle reporting');
+}
 
 const interfaceFields = [
   'displayName',
@@ -122,11 +132,18 @@ if (orgx.type !== 'http') {
 if (orgx.url !== 'https://mcp.useorgx.com/mcp') {
   fail('mcpServers.orgx.url must target https://mcp.useorgx.com/mcp');
 }
+if (!String(orgx.note ?? '').includes('operator chronicle reporting')) {
+  fail('mcpServers.orgx.note must mention operator chronicle reporting');
+}
 
 for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
   const skillPath = resolve(root, 'skills', skillName, 'SKILL.md');
   if (!existsSync(skillPath)) {
     fail(`missing skill: ${skillName}`);
+  }
+  const skillText = readFileSync(skillPath, 'utf8');
+  if (!skillText.includes('get_operator_chronicle')) {
+    fail(`${skillName} must route reporting questions through get_operator_chronicle`);
   }
 }
 
