@@ -38,6 +38,39 @@ The required product behavior is:
 5. Passive hooks reconcile missed evidence only after the fact; they are never
    treated as a substitute for live MCP read/write calls.
 
+## Alternatives And Hook Fit
+
+There are three viable reporting paths, but they are not equivalent:
+
+1. **Direct MCP readout**: the client exposes `get_operator_chronicle` and the
+   agent calls it in-session. This is the preferred path for decisions,
+   chronology, artifacts, PRs, velocity, goals, initiatives, gaps, and next
+   priorities because it is live, scoped, and inspectable.
+2. **MCP morning-brief fallback**: the client exposes only the compatibility
+   wrapper or has a stale tool schema, so the agent calls `orgx_recommend` /
+   `_orgx_recommend` with `mode: "morning_brief"`. This is acceptable as a
+   temporary UX fallback only when the response proves `source_tool:
+   "get_operator_chronicle"` and includes `reportingNarrative.briefMarkdown`.
+3. **Passive hook reconciliation**: the client emits lifecycle events and OrgX
+   reconciles Work Graph evidence after the fact. This is a backstop for missed
+   local evidence, not the main reporting UX, because it cannot reliably answer
+   a live "what changed yesterday / this week / this month?" question without a
+   subsequent MCP read.
+
+Client hook coverage is therefore judged by whether the plugin taps the hooks
+that the client actually exposes:
+
+- Codex: taps local lifecycle hooks, especially `Stop`, and now reconciles
+  summary-only Work Graph evidence. Direct chronicle readout is still gated on
+  active-session tool exposure.
+- ChatGPT: has no local lifecycle hook in this package. The correct surface is
+  hosted MCP / Apps SDK tool discovery plus app action controls and widgets.
+- Claude Code: taps lifecycle hooks through the separate Claude plugin and has
+  direct MCP readout proof in the local CLI.
+- Cursor: has MCP tools plus rules/commands, but no equivalent passive
+  lifecycle hook package here. Cursor reporting quality depends on durable MCP
+  auth and stable tool listing.
+
 ## Coverage Matrix
 
 | Client | Current OrgX surface | Hook/support level | Chronicle route | Missing for seamless UX |
@@ -59,6 +92,8 @@ current evidence:
   "get_operator_chronicle"` and `reportingNarrative.briefMarkdown`.
 - The report includes decisions, rollups, artifact ledger, PR velocity, goals,
   initiatives, top priorities, and data gaps.
+- Accepted goal decisions are persisted into first-class goal links instead of
+  remaining provisional `decision_requests` fallback signals.
 - Hook reconciliation emits summary-only Work Graph evidence with
   `raw_transcripts_sent: false` and a stable `work_graph_fingerprint`.
 - Client-specific install docs do not claim hook support where the client only
@@ -66,7 +101,7 @@ current evidence:
 
 ## Current Evidence Snapshot
 
-Last checked: 2026-06-05 09:38 America/Chicago.
+Last checked: 2026-06-05 09:58 America/Chicago.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -125,6 +160,14 @@ Last checked: 2026-06-05 09:38 America/Chicago.
   ChatGPT app cannot be inspected from Codex, and Arc is logged into ChatGPT but
   is unsafe for automation until an unrelated LinkedIn company-page edit modal
   is cleared without saving.
+- OrgX app accepted-goal writer/linking is now shipped. PR #1728
+  (`https://github.com/hopeatina/orgx/pull/1728`) merged at
+  `736fe928b7d1fcd9e27ac1468f624c65f6f11549` after focused tests,
+  typecheck, diff check, pre-push benchmark proof, and a successful Vercel
+  preview deployment (`dpl_FdJVknvHRgqkdD7PioaWQ5BLeLy1`). The change wires
+  approved objective edits into existing `goals`, `user_goals`, and
+  `objective_id` infrastructure so accepted goal decisions can become
+  reportable first-class goal links.
 
 ## Next Fixes
 
@@ -136,8 +179,6 @@ Last checked: 2026-06-05 09:38 America/Chicago.
 3. Cursor: reconcile the CLI summary-list inconsistency and make OAuth/session
    persistence durable enough that `list-tools orgx` does not require repeated
    manual login.
-4. OrgX app: ship and verify durable accepted goal writer/linking so provisional
-   `decision_requests` goals become first-class goals instead of a fallback.
-5. Claude Code: monitor Stop/SessionEnd hook reliability after direct MCP calls;
+4. Claude Code: monitor Stop/SessionEnd hook reliability after direct MCP calls;
    direct `get_operator_chronicle` is now proven, but one successful
    `claude mcp get orgx` check emitted a cancelled `SessionEnd` hook warning.
