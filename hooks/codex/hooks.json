@@ -28,6 +28,9 @@
     "Stop": [
       {
         "command": "node hooks/scripts/orgx-session-hook.mjs --event=Stop --source_client=codex"
+      },
+      {
+        "command": "node hooks/scripts/orgx-reconcile-hook.mjs --event=Stop --source_client=codex"
       }
     ]
   }

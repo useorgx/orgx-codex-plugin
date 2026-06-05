@@ -23,11 +23,13 @@ There are two reporting paths:
   `reportingNarrative.briefMarkdown`. Do not ask the user to reconnect before
   giving the report.
 - **Passive backstop:** Codex runtime hooks installed by `orgx-wizard hooks
-  install` record compact session events for later Work Graph reconciliation.
+  install` record compact session events and run summary-only local Work Graph
+  reconciliation on `Stop`.
 
 Do not treat hook presence as a substitute for intentional OrgX writes. Hooks
-answer whether OrgX was used; MCP calls make the work durable in OrgX while the
-session is still fresh.
+answer whether OrgX was used and can write a local report automatically; MCP
+calls, or an explicitly opted-in successful Work Graph post, make the work
+durable in OrgX while the session is still fresh.
 
 ## Workflow
 
@@ -77,6 +79,10 @@ session is still fresh.
 - When a Work Graph report is generated, include its `work_graph_fingerprint`
   and `signup_hydration.hydration_key` in summaries or artifacts that are safe
   to store.
+- Automatic Stop-hook reconciliation writes the latest local report to
+  `~/.config/useorgx/wizard/hooks/reports/latest-work-graph-report.json`.
+- Stop-hook posting requires `ORGX_HOOK_RECONCILE_POST=true` or
+  `ORGX_WIZARD_HOOK_RECONCILE_POST=true` plus `ORGX_API_KEY`.
 - Treat the fingerprint as the durable claim key that lets OrgX hydrate
   pre-signup audit value into a user's future workspace.
 - Never derive the fingerprint from secrets or raw transcripts that would need
