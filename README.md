@@ -70,6 +70,13 @@ through `orgx-wizard hooks install`. The wizard can merge global hook config,
 preserve existing `notify` integrations such as Computer Use, and write a local
 outbox under `~/.config/useorgx/wizard/hooks/events.jsonl`.
 
+Client hook coverage is tracked in
+[docs/client-hook-coverage.md](./docs/client-hook-coverage.md). Current verdict:
+the Codex package covers Codex skills, MCP setup, stale-client chronicle
+fallback, and passive hook templates, but it is not sufficient proof that every
+AI client exposes the same hooks or direct `get_operator_chronicle` tool. Use
+that matrix before claiming ChatGPT, Claude Code, or Cursor parity.
+
 Hook events are a passive backstop. They record compact session metadata and
 safe summaries so Work Graph reconciliation can answer:
 
