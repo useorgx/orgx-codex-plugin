@@ -9,6 +9,7 @@ const peerManifestPath = resolve(root, 'plugin.manifest.json');
 const manifestPath = resolve(root, '.codex-plugin', 'plugin.json');
 const mcpPath = resolve(root, '.mcp.json');
 const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
+const clientHookCoveragePath = resolve(root, 'docs', 'client-hook-coverage.md');
 const codexHooksPath = resolve(root, 'hooks', 'codex', 'hooks.json');
 const hookScriptPath = resolve(root, 'hooks', 'scripts', 'orgx-session-hook.mjs');
 const hookReconcilerPath = resolve(
@@ -32,6 +33,7 @@ if (!existsSync(peerManifestPath)) fail('missing plugin.manifest.json');
 if (!existsSync(manifestPath)) fail('missing .codex-plugin/plugin.json');
 if (!existsSync(mcpPath)) fail('missing .mcp.json');
 if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json');
+if (!existsSync(clientHookCoveragePath)) fail('missing docs/client-hook-coverage.md');
 if (!existsSync(codexHooksPath)) fail('missing hooks/codex/hooks.json');
 if (!existsSync(hookScriptPath)) fail('missing hooks/scripts/orgx-session-hook.mjs');
 if (!existsSync(hookReconcilerPath)) {
@@ -44,6 +46,7 @@ const manifest = readJson(manifestPath);
 const mcp = readJson(mcpPath);
 const marketplace = readJson(marketplacePath);
 const codexHooks = readJson(codexHooksPath);
+const clientHookCoverage = readFileSync(clientHookCoveragePath, 'utf8');
 
 if (!manifest.name || typeof manifest.name !== 'string') {
   fail('manifest.name must be a non-empty string');
@@ -136,6 +139,22 @@ if (!String(orgx.note ?? '').includes('operator chronicle reporting')) {
   fail('mcpServers.orgx.note must mention operator chronicle reporting');
 }
 
+for (const expected of [
+  'Coverage is not sufficient yet for the full operator experience.',
+  'Codex',
+  'ChatGPT',
+  'Claude Code',
+  'Cursor',
+  'get_operator_chronicle',
+  'orgx_recommend',
+  'mode: "morning_brief"',
+  'raw_transcripts_sent: false',
+]) {
+  if (!clientHookCoverage.includes(expected)) {
+    fail(`client hook coverage audit must include: ${expected}`);
+  }
+}
+
 for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
   const skillPath = resolve(root, 'skills', skillName, 'SKILL.md');
   if (!existsSync(skillPath)) {
@@ -211,6 +230,7 @@ for (const expectedPath of [
   'hooks/codex/',
   'hooks/scripts/orgx-session-hook.mjs',
   'hooks/scripts/orgx-work-graph-reconcile.mjs',
+  'docs/client-hook-coverage.md',
   'lib/peer/peer.mjs',
   'skills/',
 ]) {
