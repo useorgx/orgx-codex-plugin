@@ -86,6 +86,17 @@ if (
 ) {
   fail('defaultPrompt must include an operator chronicle reporting prompt');
 }
+if (
+  !manifest.interface.defaultPrompt?.some(
+    (prompt) =>
+      prompt.includes('get_operator_chronicle') &&
+      prompt.includes('orgx_recommend') &&
+      prompt.includes('mode="morning_brief"') &&
+      prompt.includes('reportingNarrative.briefMarkdown'),
+  )
+) {
+  fail('defaultPrompt chronicle prompt must document direct tool and stale-client fallback');
+}
 if (!manifest.interface.longDescription.includes('operator chronicle reporting')) {
   fail('longDescription must mention operator chronicle reporting');
 }
