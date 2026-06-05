@@ -354,6 +354,8 @@ for (const expected of [
   'get_operator_chronicle',
   'raw_transcripts_sent',
   'orgx_codex_plugin_reporting_gate_diagnostics',
+  'recommendedActions',
+  'cursor-agent login',
 ]) {
   if (!reportingGateDiagnostics.includes(expected)) {
     fail(`reporting gate diagnostics must include ${expected}`);

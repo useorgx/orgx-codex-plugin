@@ -79,6 +79,23 @@ test("summarizeGates surfaces needs-you state", () => {
   assert.equal(summary.ok, false);
   assert.equal(summary.attentionState, "needs_you");
   assert.deepEqual(summary.openGateIds, ["b"]);
+  assert.deepEqual(summary.recommendedActions, []);
+});
+
+test("summarizeGates gives Cursor recovery sequence", () => {
+  const summary = summarizeGates([
+    { id: "cursor_agent_auth", status: "open" },
+    { id: "cursor_mcp_list", status: "open" },
+    { id: "cursor_list_tools_orgx", status: "open" },
+  ]);
+  assert.deepEqual(summary.openGateIds, [
+    "cursor_agent_auth",
+    "cursor_mcp_list",
+    "cursor_list_tools_orgx",
+  ]);
+  assert.equal(summary.recommendedActions.length, 3);
+  assert.match(summary.recommendedActions[0].action, /cursor-agent login/);
+  assert.match(summary.recommendedActions[2].action, /get_operator_chronicle/);
 });
 
 test("main emits redacted reporting diagnostics", async () => {
@@ -142,6 +159,7 @@ test("main emits redacted reporting diagnostics", async () => {
   assert.ok(report.summary.openGateIds.includes("cursor_agent_auth"));
   assert.ok(report.summary.openGateIds.includes("cursor_mcp_list"));
   assert.ok(report.summary.openGateIds.includes("cursor_list_tools_orgx"));
+  assert.match(report.summary.recommendedActions[0].action, /browser authentication/);
   assert.deepEqual(calls, [
     "cursor-agent status",
     "cursor-agent mcp list",

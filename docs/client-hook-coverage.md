@@ -102,7 +102,7 @@ current evidence:
 
 ## Current Evidence Snapshot
 
-Last checked: 2026-06-05 10:45 America/Chicago.
+Last checked: 2026-06-05 10:50 America/Chicago.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -127,6 +127,10 @@ Last checked: 2026-06-05 10:45 America/Chicago.
   MCP config. A live run at 2026-06-05 10:45 America/Chicago returned
   `attentionState: "needs_you"` with exactly three open gates:
   `cursor_agent_auth`, `cursor_mcp_list`, and `cursor_list_tools_orgx`.
+  Text mode now leads with the recovery sequence before the details:
+  `cursor-agent login`, then `cursor-agent mcp list`, then
+  `cursor-agent mcp login orgx` if `list-tools orgx` still fails to expose
+  `get_operator_chronicle`.
 - `~/.codex/hooks.json` has a Codex `Stop` sequence with the OrgX session hook,
   the OrgX reconcile hook, and the existing notify hook.
 - Running the installed Stop reconcile command wrote

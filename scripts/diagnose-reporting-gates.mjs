@@ -405,6 +405,32 @@ function inspectWorkGraphReport({ homeDir = homedir() } = {}) {
 
 export function summarizeGates(gates) {
   const open = gates.filter((item) => ["open", "blocked_by_client_access", "unknown"].includes(item.status));
+  const openGateIds = open.map((item) => item.id);
+  const recommendedActions = [];
+  if (openGateIds.includes("cursor_agent_auth")) {
+    recommendedActions.push({
+      gate: "cursor_agent_auth",
+      action: "Run cursor-agent login, complete browser authentication, then rerun orgx-codex-diagnose-reporting.",
+    });
+  }
+  if (openGateIds.includes("cursor_mcp_list")) {
+    recommendedActions.push({
+      gate: "cursor_mcp_list",
+      action: "After Cursor Agent login, run cursor-agent mcp list and confirm orgx is visible.",
+    });
+  }
+  if (openGateIds.includes("cursor_list_tools_orgx")) {
+    recommendedActions.push({
+      gate: "cursor_list_tools_orgx",
+      action: "If orgx remains missing or mismatched, run cursor-agent mcp login orgx and then verify list-tools orgx includes get_operator_chronicle.",
+    });
+  }
+  if (openGateIds.includes("local_work_graph_report")) {
+    recommendedActions.push({
+      gate: "local_work_graph_report",
+      action: "Run orgx-codex-reconcile-hooks to regenerate the summary-only local Work Graph report.",
+    });
+  }
   return {
     ok: open.length === 0,
     attentionState: open.length > 0 ? "needs_you" : "verified",
@@ -412,7 +438,8 @@ export function summarizeGates(gates) {
       open.length > 0
         ? `${open.length} reporting gate${open.length === 1 ? "" : "s"} need attention`
         : "Operator reporting gates are locally verified",
-    openGateIds: open.map((item) => item.id),
+    openGateIds,
+    recommendedActions,
   };
 }
 
@@ -458,6 +485,9 @@ export async function main({
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else if (writeOutput) {
     process.stdout.write(`${report.summary.headline}\n`);
+    for (const action of report.summary.recommendedActions) {
+      process.stdout.write(`> ${action.action}\n`);
+    }
     for (const item of gates) {
       process.stdout.write(`- ${item.status} ${item.client}/${item.id}: ${item.evidence}\n`);
     }
