@@ -218,6 +218,8 @@ for (const expected of [
   'chatgpt_action_list',
   'claude_direct_readout',
   'cursor_morning_brief_command',
+  'cursor_config_shape',
+  'cursor_agent_auth',
   'cursor_auth_durability',
   'accepted_goal_links_live_data',
 ]) {
@@ -238,6 +240,9 @@ if (gatesById.get('chatgpt_action_list').status === 'verified') {
 }
 if (gatesById.get('cursor_auth_durability').status === 'verified') {
   fail('cursor_auth_durability must not be marked verified until repeated list-tools calls work without login');
+}
+if (gatesById.get('cursor_agent_auth').status === 'verified') {
+  fail('cursor_agent_auth must not be marked verified while cursor-agent status reports Not logged in');
 }
 if (gatesById.get('accepted_goal_links_live_data').status === 'verified') {
   fail('accepted_goal_links_live_data must not be marked verified while the chronicle reports provisional goal signals');

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastCheckedAt": "2026-06-05T10:40:00-05:00",
+  "lastCheckedAt": "2026-06-05T10:45:00-05:00",
   "purpose": "Machine-readable gates for the OrgX operator chronicle plugin UX.",
   "requiredReadoutFields": [
     "reportingNarrative.briefMarkdown",
@@ -46,7 +46,7 @@
       "client": "local",
       "status": "verified",
       "route": "passive_hook_reconciliation",
-      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor MCP list/list-tools, and Claude MCP config. Live run at 2026-06-05 10:40 CDT reported 2 open gates: cursor_mcp_list and cursor_list_tools_orgx.",
+      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, and Claude MCP config. Live run at 2026-06-05 10:45 CDT reported 3 open gates: cursor_agent_auth, cursor_mcp_list, and cursor_list_tools_orgx.",
       "nextStep": "Use the diagnostic command before claiming client reporting UX is seamless."
     },
     {
@@ -106,12 +106,28 @@
       "nextStep": "Keep the command aligned with the readout fields and fallback contract."
     },
     {
+      "id": "cursor_config_shape",
+      "client": "cursor",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "Live diagnostic at 2026-06-05 10:45 CDT verified the redacted Cursor MCP config shape contains an orgx server entry with url host mcp.useorgx.com.",
+      "nextStep": "Treat remaining Cursor failures as auth or Cursor Agent loader behavior, not a missing OrgX URL."
+    },
+    {
+      "id": "cursor_agent_auth",
+      "client": "cursor",
+      "status": "open",
+      "route": "direct_mcp_readout",
+      "evidence": "Live diagnostic at 2026-06-05 10:45 CDT reported cursor-agent status is Not logged in.",
+      "nextStep": "Run cursor-agent login before expecting durable Cursor MCP reporting."
+    },
+    {
       "id": "cursor_auth_durability",
       "client": "cursor",
       "status": "open",
       "route": "direct_mcp_readout",
-      "evidence": "Live diagnostic at 2026-06-05 10:40 CDT reported cursor-agent mcp list sees no configured servers and cursor-agent mcp list-tools orgx fails with Client ID mismatch.",
-      "nextStep": "Resolve Cursor CLI list/list-tools inconsistency and refresh the Cursor OAuth/session binding until repeated list-tools orgx calls work without another login."
+      "evidence": "Live diagnostic at 2026-06-05 10:45 CDT verified the redacted Cursor config shape contains orgx at mcp.useorgx.com, but cursor-agent status reports Not logged in, cursor-agent mcp list sees no configured servers, and cursor-agent mcp list-tools orgx fails with Client ID mismatch.",
+      "nextStep": "Log Cursor Agent in, resolve the CLI list/list-tools inconsistency, and refresh the Cursor OAuth/session binding until repeated list-tools orgx calls work without another login."
     },
     {
       "id": "accepted_goal_links_live_data",

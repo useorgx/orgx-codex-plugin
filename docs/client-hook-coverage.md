@@ -102,7 +102,7 @@ current evidence:
 
 ## Current Evidence Snapshot
 
-Last checked: 2026-06-05 10:40 America/Chicago.
+Last checked: 2026-06-05 10:45 America/Chicago.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -123,9 +123,10 @@ Last checked: 2026-06-05 10:40 America/Chicago.
   accidentally marked verified without evidence.
 - `orgx-codex-diagnose-reporting` now runs a redacted local diagnostic across
   hosted MCP descriptor health, Codex Stop hooks, latest Work Graph report,
-  Cursor MCP list/list-tools, and Claude MCP config. A live run at 2026-06-05
-  10:40 America/Chicago returned `attentionState: "needs_you"` with exactly two
-  open gates: `cursor_mcp_list` and `cursor_list_tools_orgx`.
+  Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, and Claude
+  MCP config. A live run at 2026-06-05 10:45 America/Chicago returned
+  `attentionState: "needs_you"` with exactly three open gates:
+  `cursor_agent_auth`, `cursor_mcp_list`, and `cursor_list_tools_orgx`.
 - `~/.codex/hooks.json` has a Codex `Stop` sequence with the OrgX session hook,
   the OrgX reconcile hook, and the existing notify hook.
 - Running the installed Stop reconcile command wrote
@@ -170,9 +171,11 @@ Last checked: 2026-06-05 10:40 America/Chicago.
   validation, `tests/api.client-bootstrap.route.spec.ts`, commit-hook
   typecheck/lint-budget, pre-push `benchmark:prove`, provider-auth checks, and
   successful Vercel deployment `dpl_22askxJ46TmZR3jNhCLk6zow3YLV`.
-  Cursor auth durability is still not closed: the new diagnostic reports
-  `cursor-agent mcp list` sees no configured servers, and
-  `cursor-agent mcp list-tools orgx` fails with `Client ID mismatch`.
+  Cursor auth durability is still not closed: the new diagnostic verified the
+  redacted Cursor config shape contains `orgx` at `mcp.useorgx.com`, but
+  `cursor-agent status` reports `Not logged in`, `cursor-agent mcp list` sees no
+  configured servers, and `cursor-agent mcp list-tools orgx` fails with
+  `Client ID mismatch`.
 - ChatGPT server/submission metadata is aligned with the direct chronicle tool,
   but action-list proof is not complete. Current live UI verification is blocked
   by client access rather than MCP metadata: Chrome is logged out, the native
