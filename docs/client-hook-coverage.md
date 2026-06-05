@@ -44,7 +44,7 @@ The required product behavior is:
 | --- | --- | --- | --- | --- |
 | Codex | `orgx-codex-plugin` bundles `.mcp.json`, skills, local marketplace metadata, passive hook templates, peer sidecar, and Work Graph reconciler. | Installed local hook coverage is now proven for `Stop`: `~/.codex/hooks.json` writes the OrgX outbox, runs `orgx-reconcile-hook.mjs`, and preserves the existing notify hook. Package tests also cover `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, and `Stop`. Current Codex sessions may still expose only compatibility app tools. | Preferred: `get_operator_chronicle`. Fallback: `_orgx_recommend` / `orgx_recommend` with `mode: "morning_brief"`. | Prove direct callable exposure after plugin refresh. Add client-side evidence when bootstrap advertises `get_operator_chronicle` but the active tool list omits it. |
 | ChatGPT | Hosted OrgX MCP / Apps SDK app through `https://mcp.useorgx.com/mcp`; widgets and tool descriptors live in the MCP server, not this Codex plugin. Live `server.json` exposes 29 tools including `get_operator_chronicle`. | No local lifecycle hook channel in this package. ChatGPT relies on app tool scanning, app approval, action controls, and widget resources. | Preferred: ChatGPT app tool `get_operator_chronicle` after Scan Tools / Refresh. Fallback: app tool `orgx_recommend` with `mode: "morning_brief"` if the scan is stale. | Verify the ChatGPT draft/published app action list includes the new direct tool. Current UI proof is blocked: Chrome is not logged into ChatGPT, native ChatGPT app inspection is unavailable to Codex, and the logged-in Arc browser state is unsafe for automation until an unrelated LinkedIn edit modal is cleared. |
-| Claude Code | Separate Claude Code config/plugin path is required. Claude Code supports lifecycle hooks and MCP tool hooks, but this package only ships Codex hook JSON. | Separate `orgx-claude-code-plugin` install is verified at `0.1.3`: it emits reporting events on `SessionStart`, `PostToolUse`, `SubagentStop`, and `Stop`, then runs non-blocking local Work Graph reconciliation on Claude `Stop`. Claude Code `2.1.165` currently shows cloud `claude.ai OrgX` connected, while the user-scoped local `orgx` MCP entry needs authentication and `claude mcp` has no login subcommand. | Preferred: Claude MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. | Add a reliable Claude local OAuth/refresh path or configure the CLI to use the connected cloud OrgX connector for noninteractive tool calls; then prove direct/fallback chronicle readout in a fresh Claude Code session. |
+| Claude Code | Separate Claude Code config/plugin path is required. Claude Code supports lifecycle hooks and MCP tool hooks, but this package only ships Codex hook JSON. | Separate `orgx-claude-code-plugin` install is verified at `0.1.3`: it emits reporting events on `SessionStart`, `PostToolUse`, `SubagentStop`, and `Stop`, then runs non-blocking local Work Graph reconciliation on Claude `Stop`. Claude Code `2.1.165` now has the user-scoped local `orgx` MCP entry connected and a fresh noninteractive direct readout succeeded through `mcp__orgx__get_operator_chronicle`. | Preferred: Claude MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. | Keep monitoring hook reliability: one `claude mcp get orgx` run reported a cancelled `SessionEnd` hook even while MCP auth was connected. |
 | Cursor | Hosted OrgX MCP is configured in `~/.cursor/mcp.json`, and repo-local Cursor overlay files exist under `.cursor/orgx`, `.cursor/rules`, and `.cursor/commands`. | Direct MCP tool surface is viable but auth is volatile. On 2026-06-05, `cursor-agent mcp list-tools orgx` first required OAuth; after `cursor-agent mcp login orgx`, it returned 29 tools including direct `get_operator_chronicle`. Cursor exposes MCP tools and rules/commands, not a matching passive lifecycle hook package here. | Preferred: Cursor MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. | Resolve the CLI inconsistency where `cursor-agent mcp list` reports no configured servers while `cursor-agent mcp list-tools orgx` succeeds, and make OAuth/session persistence durable enough that the user does not have to re-login for reporting clarity. |
 
 ## Evidence Gates
@@ -66,7 +66,7 @@ current evidence:
 
 ## Current Evidence Snapshot
 
-Last checked: 2026-06-05 09:14 America/Chicago.
+Last checked: 2026-06-05 09:38 America/Chicago.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -101,11 +101,15 @@ Last checked: 2026-06-05 09:14 America/Chicago.
   `raw_transcripts_excluded: true`,
   `work_graph_fingerprint: wgf_928a73d6ddb93f28527167da`, and
   `posted: false`.
-- Claude Code `2.1.165` now reports `claude.ai OrgX` connected, but
-  `claude mcp get orgx` reports the user-scoped local `orgx` server as
-  `Needs authentication`. `claude mcp --help` exposes add/get/list/remove
-  management commands but no OAuth login command, so fresh local CLI readout
-  remains blocked by auth/tool exposure rather than missing hosted OrgX tools.
+- Claude Code `2.1.165` now reports the user-scoped local `orgx` server as
+  `Connected`. A fresh noninteractive smoke test with
+  `--allowedTools mcp__orgx__get_operator_chronicle` and
+  `--output-format json` exited successfully and returned
+  `tool_used: "mcp__orgx__get_operator_chronicle"`, `has_briefMarkdown: true`,
+  headline `275 items need a decision or unblock`, 6 top priorities, 8 pending
+  decisions, 23 resolved decisions in 30 days, 53 artifacts, 4 goals, and 1
+  data gap. This closes the Claude direct-readout gate for the current local
+  CLI session.
 - Cursor global MCP config at `~/.cursor/mcp.json` includes an `orgx` server
   pointing at `mcp.useorgx.com`. The repo-local OrgX Cursor overlay includes
   `.cursor/orgx/manifest.json`, `.cursor/rules/orgx-execution-loop.mdc`, and
@@ -129,12 +133,11 @@ Last checked: 2026-06-05 09:14 America/Chicago.
    bootstrap/tool-list evidence.
 2. ChatGPT: refresh the app tool scan and verify `get_operator_chronicle` in the
    action list before claiming the ChatGPT app has first-class chronicle UX.
-3. Claude Code: capture a fresh Claude Code session where
-   `get_operator_chronicle` is directly callable, or prove the
-   `orgx_recommend mode="morning_brief"` fallback in that client after resolving
-   the local MCP auth gap.
-4. Cursor: reconcile the CLI summary-list inconsistency and make OAuth/session
+3. Cursor: reconcile the CLI summary-list inconsistency and make OAuth/session
    persistence durable enough that `list-tools orgx` does not require repeated
    manual login.
-5. OrgX app: implement durable accepted goal writer/linking so provisional
+4. OrgX app: ship and verify durable accepted goal writer/linking so provisional
    `decision_requests` goals become first-class goals instead of a fallback.
+5. Claude Code: monitor Stop/SessionEnd hook reliability after direct MCP calls;
+   direct `get_operator_chronicle` is now proven, but one successful
+   `claude mcp get orgx` check emitted a cancelled `SessionEnd` hook warning.
