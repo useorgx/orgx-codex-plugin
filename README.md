@@ -94,6 +94,14 @@ is the bridge between a pre-signup audit/share surface and the user's future
 OrgX workspace: after signup, OrgX can claim the fingerprint, dedupe replays,
 and attach the redacted Work Graph to a kickoff initiative.
 
+The Codex `Stop` hook also invokes `orgx-reconcile-hook.mjs`, which writes the
+latest local Work Graph report to
+`~/.config/useorgx/wizard/hooks/reports/latest-work-graph-report.json`. This is
+non-blocking and exits successfully even when the outbox is missing, credentials
+are absent, or posting fails. To make Stop-hook reconciliation publish to OrgX,
+set `ORGX_HOOK_RECONCILE_POST=true` or
+`ORGX_WIZARD_HOOK_RECONCILE_POST=true` and provide `ORGX_API_KEY`.
+
 Raw transcripts are not sent by the hook template. The reconciler should keep
 transcripts local and write only redacted summaries, hashes, evidence refs,
 Work Graph fingerprints, and approved OrgX activity.
@@ -110,6 +118,12 @@ To publish the report to OrgX, provide an API key and opt in explicitly:
 
 ```bash
 ORGX_API_KEY=oxk_... orgx-codex-reconcile-hooks --post
+```
+
+For automatic publish on Codex session stop:
+
+```bash
+ORGX_HOOK_RECONCILE_POST=true ORGX_API_KEY=oxk_... codex
 ```
 
 ## Local verification

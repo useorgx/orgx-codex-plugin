@@ -18,6 +18,7 @@
     ".mcp.json",
     "assets/",
     "hooks/codex/",
+    "hooks/scripts/orgx-reconcile-hook.mjs",
     "hooks/scripts/orgx-session-hook.mjs",
     "hooks/scripts/orgx-work-graph-reconcile.mjs",
     "docs/client-hook-coverage.md",
@@ -33,7 +34,7 @@
   ],
   "scripts": {
     "check": "node scripts/verify-plugin.mjs",
-    "test": "node --test lib/peer/peer.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs",
+    "test": "node --test lib/peer/peer.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-reconcile-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs",
     "peer:start": "node lib/peer/cli.mjs"
   },
   "dependencies": {

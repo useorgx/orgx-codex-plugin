@@ -12,6 +12,7 @@ const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
 const clientHookCoveragePath = resolve(root, 'docs', 'client-hook-coverage.md');
 const codexHooksPath = resolve(root, 'hooks', 'codex', 'hooks.json');
 const hookScriptPath = resolve(root, 'hooks', 'scripts', 'orgx-session-hook.mjs');
+const stopReconcileHookPath = resolve(root, 'hooks', 'scripts', 'orgx-reconcile-hook.mjs');
 const hookReconcilerPath = resolve(
   root,
   'hooks',
@@ -36,6 +37,7 @@ if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json
 if (!existsSync(clientHookCoveragePath)) fail('missing docs/client-hook-coverage.md');
 if (!existsSync(codexHooksPath)) fail('missing hooks/codex/hooks.json');
 if (!existsSync(hookScriptPath)) fail('missing hooks/scripts/orgx-session-hook.mjs');
+if (!existsSync(stopReconcileHookPath)) fail('missing hooks/scripts/orgx-reconcile-hook.mjs');
 if (!existsSync(hookReconcilerPath)) {
   fail('missing hooks/scripts/orgx-work-graph-reconcile.mjs');
 }
@@ -196,12 +198,40 @@ for (const eventName of [
   }
 }
 
+const stopEntries = codexHooks.hooks.Stop;
+const hasStopReconciler = stopEntries.some(
+  (entry) =>
+    entry &&
+    typeof entry.command === 'string' &&
+    entry.command.includes('orgx-reconcile-hook.mjs') &&
+    entry.command.includes('--event=Stop') &&
+    entry.command.includes('--source_client=codex'),
+);
+if (!hasStopReconciler) {
+  fail('Stop must call orgx-reconcile-hook.mjs with source_client=codex');
+}
+
 const hookScript = readFileSync(hookScriptPath, 'utf8');
 if (!hookScript.includes('orgx_codex_plugin_runtime_hook')) {
   fail('hook script must emit orgx_codex_plugin_runtime_hook records');
 }
 if (hookScript.includes('appendFileSync(outbox, raw')) {
   fail('hook script must not persist raw hook payloads');
+}
+
+const stopReconcileHook = readFileSync(stopReconcileHookPath, 'utf8');
+for (const expected of [
+  'latest-work-graph-report.json',
+  'ORGX_HOOK_RECONCILE_POST',
+  'ORGX_WIZARD_HOOK_RECONCILE_POST',
+  'process.exit(0)',
+]) {
+  if (!stopReconcileHook.includes(expected)) {
+    fail(`Stop reconcile hook must include ${expected}`);
+  }
+}
+if (stopReconcileHook.includes('process.exit(1)')) {
+  fail('Stop reconcile hook must never fail the client session');
 }
 
 const hookReconciler = readFileSync(hookReconcilerPath, 'utf8');
@@ -228,6 +258,7 @@ if (!Array.isArray(pkg.files)) {
 for (const expectedPath of [
   '.codex-plugin/',
   'hooks/codex/',
+  'hooks/scripts/orgx-reconcile-hook.mjs',
   'hooks/scripts/orgx-session-hook.mjs',
   'hooks/scripts/orgx-work-graph-reconcile.mjs',
   'docs/client-hook-coverage.md',
