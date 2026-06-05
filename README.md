@@ -3,6 +3,8 @@
 Codex plugin package for OrgX:
 
 - OrgX MCP server wiring via `https://mcp.useorgx.com/mcp`
+- Operator chronicle reporting for yesterday/week/30-day decisions, PRs,
+  artifacts, goals, gaps, and priorities
 - Initiative-aware Codex skills for OrgX execution
 - Runtime reporting guidance and passive hook templates for progress, artifacts,
   blockers, and completion
@@ -48,6 +50,12 @@ workstream, milestone, task, blocker, or decision.
 Keep OrgX updated during live Codex execution with progress, artifacts,
 blockers, and completion events.
 
+For reporting or daily-brief style questions, start with
+`get_operator_chronicle` when the live OrgX MCP tool map exposes it. Its
+`reportingNarrative.briefMarkdown` is the canonical concise answer for
+decisions made yesterday, the past week, the past 30 days, artifacts, PR
+receipts, velocity, top priorities, goals, and gaps.
+
 ## Runtime hooks
 
 The plugin now includes Codex hook templates, but the recommended install path is
@@ -58,6 +66,8 @@ outbox under `~/.config/useorgx/wizard/hooks/events.jsonl`.
 Hook events are a passive backstop. They record compact session metadata and
 safe summaries so Work Graph reconciliation can answer:
 
+- What changed yesterday, this week, and in the past 30 days?
+- Which decisions, PRs, artifacts, goals, and priorities should be surfaced?
 - Did the session call OrgX MCP?
 - Did meaningful work happen without OrgX writeback?
 - Are there decisions, blockers, artifacts, people, product surfaces, or goals
@@ -182,7 +192,8 @@ The bundled `.mcp.json` config uses the hosted OrgX streamable HTTP endpoint:
 ```
 
 This follows current OrgX MCP docs and lets OAuth happen in-browser on first
-use.
+use. After bootstrap, the preferred reporting first call is
+`get_operator_chronicle` with `period: "30d"` when the client exposes it.
 
 ## Sources used
 
