@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastCheckedAt": "2026-06-05T10:31:00-05:00",
+  "lastCheckedAt": "2026-06-05T10:40:00-05:00",
   "purpose": "Machine-readable gates for the OrgX operator chronicle plugin UX.",
   "requiredReadoutFields": [
     "reportingNarrative.briefMarkdown",
@@ -41,6 +41,14 @@
     }
   ],
   "gates": [
+    {
+      "id": "local_reporting_gate_diagnostics",
+      "client": "local",
+      "status": "verified",
+      "route": "passive_hook_reconciliation",
+      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor MCP list/list-tools, and Claude MCP config. Live run at 2026-06-05 10:40 CDT reported 2 open gates: cursor_mcp_list and cursor_list_tools_orgx.",
+      "nextStep": "Use the diagnostic command before claiming client reporting UX is seamless."
+    },
     {
       "id": "hosted_mcp_descriptor",
       "client": "server",
@@ -102,8 +110,8 @@
       "client": "cursor",
       "status": "open",
       "route": "direct_mcp_readout",
-      "evidence": "cursor-agent mcp list-tools orgx required login again after PR #1732, and cursor-agent mcp list still reported no configured servers.",
-      "nextStep": "Resolve Cursor CLI list/list-tools inconsistency and make OAuth/session persistence durable."
+      "evidence": "Live diagnostic at 2026-06-05 10:40 CDT reported cursor-agent mcp list sees no configured servers and cursor-agent mcp list-tools orgx fails with Client ID mismatch.",
+      "nextStep": "Resolve Cursor CLI list/list-tools inconsistency and refresh the Cursor OAuth/session binding until repeated list-tools orgx calls work without another login."
     },
     {
       "id": "accepted_goal_links_live_data",

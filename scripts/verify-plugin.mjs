@@ -20,6 +20,7 @@ const hookReconcilerPath = resolve(
   'scripts',
   'orgx-work-graph-reconcile.mjs',
 );
+const reportingGateDiagnosticsPath = resolve(root, 'scripts', 'diagnose-reporting-gates.mjs');
 
 function fail(message) {
   console.error(`verify-plugin: ${message}`);
@@ -43,6 +44,7 @@ if (!existsSync(stopReconcileHookPath)) fail('missing hooks/scripts/orgx-reconci
 if (!existsSync(hookReconcilerPath)) {
   fail('missing hooks/scripts/orgx-work-graph-reconcile.mjs');
 }
+if (!existsSync(reportingGateDiagnosticsPath)) fail('missing scripts/diagnose-reporting-gates.mjs');
 
 const pkg = readJson(packagePath);
 const peerManifest = readJson(peerManifestPath);
@@ -209,6 +211,7 @@ if (!Array.isArray(operatorReportingGates.gates)) {
 const gatesById = new Map(operatorReportingGates.gates.map((gate) => [gate.id, gate]));
 for (const expected of [
   'hosted_mcp_descriptor',
+  'local_reporting_gate_diagnostics',
   'codex_direct_tool_exposure',
   'codex_morning_brief_fallback',
   'codex_stop_reconciliation',
@@ -335,6 +338,25 @@ if (
 ) {
   fail('package bin must expose orgx-codex-reconcile-hooks');
 }
+if (pkg.bin['orgx-codex-diagnose-reporting'] !== 'scripts/diagnose-reporting-gates.mjs') {
+  fail('package bin must expose orgx-codex-diagnose-reporting');
+}
+const reportingGateDiagnostics = readFileSync(reportingGateDiagnosticsPath, 'utf8');
+for (const expected of [
+  'cursor-agent',
+  'cursor-agent mcp list reports no configured servers',
+  'Client ID mismatch',
+  'get_operator_chronicle',
+  'raw_transcripts_sent',
+  'orgx_codex_plugin_reporting_gate_diagnostics',
+]) {
+  if (!reportingGateDiagnostics.includes(expected)) {
+    fail(`reporting gate diagnostics must include ${expected}`);
+  }
+}
+if (reportingGateDiagnostics.includes('.cursor/mcp.json')) {
+  fail('reporting gate diagnostics must not read or print Cursor config paths');
+}
 if (!Array.isArray(pkg.files)) {
   fail('package.json must define a publish files allowlist');
 }
@@ -347,6 +369,7 @@ for (const expectedPath of [
   'docs/client-hook-coverage.md',
   'docs/operator-reporting-gates.json',
   'lib/peer/peer.mjs',
+  'scripts/diagnose-reporting-gates.mjs',
   'skills/',
 ]) {
   if (!pkg.files.includes(expectedPath)) {
