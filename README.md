@@ -56,6 +56,13 @@ For reporting or daily-brief style questions, start with
 decisions made yesterday, the past week, the past 30 days, artifacts, PR
 receipts, velocity, top priorities, goals, and gaps.
 
+If an AI client has not refreshed its callable MCP schema after OrgX publishes
+the direct tool, use the existing `orgx_recommend` / `_orgx_recommend` fallback
+with `mode: "morning_brief"` and present the same
+`reportingNarrative.briefMarkdown`. Direct `get_operator_chronicle` calls remain
+preferred when callable; the fallback prevents a stale plugin session from
+blocking the report.
+
 ## Runtime hooks
 
 The plugin now includes Codex hook templates, but the recommended install path is
@@ -194,6 +201,11 @@ The bundled `.mcp.json` config uses the hosted OrgX streamable HTTP endpoint:
 This follows current OrgX MCP docs and lets OAuth happen in-browser on first
 use. After bootstrap, the preferred reporting first call is
 `get_operator_chronicle` with `period: "30d"` when the client exposes it.
+When the hosted MCP bootstrap advertises `get_operator_chronicle` but a client
+session still exposes only older OrgX tools, call `orgx_recommend` with
+`mode: "morning_brief"` as the compatibility path. Passive runtime hooks are a
+reconciliation backstop for session evidence; they are not a substitute for MCP
+read/write calls during the live operator report.
 
 ## Sources used
 

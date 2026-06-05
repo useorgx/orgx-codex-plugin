@@ -145,6 +145,9 @@ for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
   if (!skillText.includes('get_operator_chronicle')) {
     fail(`${skillName} must route reporting questions through get_operator_chronicle`);
   }
+  if (!skillText.includes('orgx_recommend') || !skillText.includes('morning_brief')) {
+    fail(`${skillName} must document the orgx_recommend morning_brief stale-client fallback`);
+  }
 }
 
 if (!codexHooks.hooks || typeof codexHooks.hooks !== 'object') {

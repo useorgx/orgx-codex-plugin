@@ -16,6 +16,12 @@ There are two reporting paths:
 - **Chronicle readout:** for operator reporting, call
   `get_operator_chronicle` first when available and present
   `reportingNarrative.briefMarkdown` before drilling into individual entities.
+- **Stale-client fallback:** if bootstrap or docs advertise
+  `get_operator_chronicle` but the current AI client session has not refreshed
+  its callable tool list, immediately call `orgx_recommend` or
+  `_orgx_recommend` with `mode: "morning_brief"` and present the returned
+  `reportingNarrative.briefMarkdown`. Do not ask the user to reconnect before
+  giving the report.
 - **Passive backstop:** Codex runtime hooks installed by `orgx-wizard hooks
   install` record compact session events for later Work Graph reconciliation.
 
@@ -33,9 +39,14 @@ session is still fresh.
 - `ORGX_CORRELATION_ID`
 
 2. For reporting questions, retrieve the operator chronicle:
-- Use `get_operator_chronicle` with `period: "30d"` for broad clarity.
+- Use `get_operator_chronicle` with `period: "30d"` for broad clarity when it
+  is callable in the current client.
 - Use `period: "day"` or `period: "week"` when the user asks for yesterday or
   this week.
+- If `get_operator_chronicle` is not callable in the current client, use the
+  existing `orgx_recommend` / `_orgx_recommend` fallback with
+  `mode: "morning_brief"` and the broadest supported period. Treat the direct
+  tool as preferred, but do not block on client schema refresh.
 - Lead with `reportingNarrative.briefMarkdown`, then call out gaps and the
   next action.
 
