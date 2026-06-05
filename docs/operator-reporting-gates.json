@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastCheckedAt": "2026-06-05T10:45:00-05:00",
+  "lastCheckedAt": "2026-06-05T10:50:00-05:00",
   "purpose": "Machine-readable gates for the OrgX operator chronicle plugin UX.",
   "requiredReadoutFields": [
     "reportingNarrative.briefMarkdown",
@@ -46,7 +46,7 @@
       "client": "local",
       "status": "verified",
       "route": "passive_hook_reconciliation",
-      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, and Claude MCP config. Live run at 2026-06-05 10:45 CDT reported 3 open gates: cursor_agent_auth, cursor_mcp_list, and cursor_list_tools_orgx.",
+      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, and Claude MCP config. Live text-mode run at 2026-06-05 10:50 CDT reported 3 open gates and led with a Cursor recovery sequence: cursor-agent login, cursor-agent mcp list, then cursor-agent mcp login orgx if list-tools still fails.",
       "nextStep": "Use the diagnostic command before claiming client reporting UX is seamless."
     },
     {
