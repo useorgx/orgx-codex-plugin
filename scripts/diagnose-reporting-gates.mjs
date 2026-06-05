@@ -126,6 +126,43 @@ export function classifyCursorList(result) {
   });
 }
 
+export function classifyCursorStatus(result) {
+  if (result.missing) {
+    return gate({
+      id: "cursor_agent_auth",
+      client: "cursor",
+      status: "unavailable",
+      evidence: "cursor-agent was not found on PATH.",
+      nextStep: "Install Cursor Agent before relying on Cursor reporting UX.",
+    });
+  }
+  if (/Not logged in/i.test(result.text)) {
+    return gate({
+      id: "cursor_agent_auth",
+      client: "cursor",
+      status: "open",
+      evidence: "cursor-agent status reports Not logged in.",
+      nextStep: "Run cursor-agent login before expecting durable Cursor MCP reporting.",
+    });
+  }
+  if (/Logged in|Authenticated|Signed in/i.test(result.text)) {
+    return gate({
+      id: "cursor_agent_auth",
+      client: "cursor",
+      status: "verified",
+      evidence: "cursor-agent status reports an authenticated session.",
+      nextStep: "Keep Cursor Agent authenticated while verifying MCP tool durability.",
+    });
+  }
+  return gate({
+    id: "cursor_agent_auth",
+    client: "cursor",
+    status: "unknown",
+    evidence: result.text || "cursor-agent status returned no classifiable output.",
+    nextStep: "Inspect Cursor Agent auth status manually.",
+  });
+}
+
 export function classifyCursorListTools(result) {
   if (result.missing) {
     return gate({
@@ -169,6 +206,87 @@ export function classifyCursorListTools(result) {
     status: "unknown",
     evidence: result.text || "cursor-agent mcp list-tools orgx returned no classifiable output.",
     nextStep: "Inspect Cursor list-tools output manually without printing secrets.",
+  });
+}
+
+function summarizeCursorConfigFile(filePath, label) {
+  if (!existsSync(filePath)) {
+    return {
+      label,
+      exists: false,
+      orgxPresent: false,
+      orgxUrlHost: null,
+      orgxKeys: [],
+      serverCount: 0,
+    };
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, "utf8"));
+    const servers = parsed?.mcpServers && typeof parsed.mcpServers === "object" ? parsed.mcpServers : {};
+    const orgx = servers.orgx && typeof servers.orgx === "object" ? servers.orgx : undefined;
+    let orgxUrlHost = null;
+    if (typeof orgx?.url === "string") {
+      try {
+        orgxUrlHost = new URL(orgx.url).host;
+      } catch {
+        orgxUrlHost = "invalid-url";
+      }
+    }
+    return {
+      label,
+      exists: true,
+      orgxPresent: Boolean(orgx),
+      orgxUrlHost,
+      orgxKeys: orgx ? Object.keys(orgx).sort() : [],
+      serverCount: Object.keys(servers).length,
+    };
+  } catch (error) {
+    return {
+      label,
+      exists: true,
+      parseError: error instanceof Error ? error.message : String(error),
+      orgxPresent: false,
+      orgxUrlHost: null,
+      orgxKeys: [],
+      serverCount: 0,
+    };
+  }
+}
+
+export function inspectCursorConfig({ homeDir = homedir(), cwd = process.cwd() } = {}) {
+  const configs = [
+    summarizeCursorConfigFile(join(cwd, ".cursor", "mcp.json"), "workspace"),
+    summarizeCursorConfigFile(join(homeDir, ".cursor", "mcp.json"), "home"),
+  ];
+  const orgxConfig = configs.find((config) => config.orgxPresent);
+  const parseError = configs.find((config) => config.parseError);
+  if (parseError) {
+    return gate({
+      id: "cursor_config_shape",
+      client: "cursor",
+      status: "open",
+      evidence: `${parseError.label} Cursor MCP config exists but JSON parsing failed.`,
+      nextStep: "Fix Cursor MCP config JSON before relying on Cursor reporting UX.",
+    });
+  }
+  if (!orgxConfig) {
+    return gate({
+      id: "cursor_config_shape",
+      client: "cursor",
+      status: "open",
+      evidence: `Cursor MCP config shape checked; orgx present=false; workspace_exists=${configs[0].exists}; home_exists=${configs[1].exists}`,
+      nextStep: "Add an orgx MCP server entry pointing at mcp.useorgx.com.",
+    });
+  }
+  return gate({
+    id: "cursor_config_shape",
+    client: "cursor",
+    status: orgxConfig.orgxUrlHost === "mcp.useorgx.com" ? "verified" : "open",
+    evidence: `Cursor MCP config shape checked; source=${orgxConfig.label}; server_count=${orgxConfig.serverCount}; orgx_keys=${orgxConfig.orgxKeys.join(",") || "none"}; orgx_url_host=${orgxConfig.orgxUrlHost}`,
+    nextStep:
+      orgxConfig.orgxUrlHost === "mcp.useorgx.com"
+        ? "Cursor config contains the OrgX MCP URL; remaining failures are auth or Cursor Agent loader behavior."
+        : "Set Cursor orgx MCP URL host to mcp.useorgx.com.",
   });
 }
 
@@ -313,7 +431,10 @@ export async function main({
   gates.push(await inspectHostedMcp({ fetchImpl }));
   gates.push(inspectCodexHooks({ homeDir }));
   gates.push(inspectWorkGraphReport({ homeDir }));
+  gates.push(inspectCursorConfig({ homeDir }));
 
+  const cursorStatus = await runCommand("cursor-agent", ["status"], { timeoutMs, execFileImpl });
+  gates.push(classifyCursorStatus(cursorStatus));
   const cursorList = await runCommand("cursor-agent", ["mcp", "list"], { timeoutMs, execFileImpl });
   gates.push(classifyCursorList(cursorList));
   const cursorTools = await runCommand("cursor-agent", ["mcp", "list-tools", "orgx"], {
