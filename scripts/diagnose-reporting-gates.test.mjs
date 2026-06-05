@@ -9,6 +9,7 @@ import {
   classifyCursorList,
   classifyCursorListTools,
   classifyCursorStatus,
+  inspectClientHookSurfaceContract,
   inspectCursorConfig,
   main,
   stripAnsi,
@@ -61,6 +62,37 @@ test("inspects Cursor config shape without raw values", () => {
   assert.match(gate.evidence, /orgx_url_host=mcp.useorgx.com/);
   assert.doesNotMatch(gate.evidence, /do-not-print/);
   assert.doesNotMatch(gate.evidence, /https:\/\/mcp\.useorgx\.com\/mcp/);
+});
+
+test("inspects client hook surface contract", () => {
+  const homeDir = mkdtempSync(join(tmpdir(), "orgx-hook-surfaces-"));
+  const gatesPath = join(homeDir, "operator-reporting-gates.json");
+  writeFileSync(
+    gatesPath,
+    JSON.stringify({
+      clientHookSurfaces: ["codex", "chatgpt", "claude-code", "cursor"].map(
+        (client) => ({
+          client,
+          bestAvailableSurface: "MCP tools",
+          directReadoutPath: "get_operator_chronicle",
+          fallbackPath: "orgx_recommend mode=\"morning_brief\"",
+          passiveHookSupport:
+            client === "chatgpt" || client === "cursor"
+              ? "none in this package"
+              : "Stop hook",
+          nativeHookCoverageStatus: "documented",
+          sufficiency: "partial",
+          currentGap: "runtime proof required",
+        })
+      ),
+    }),
+    "utf8"
+  );
+
+  const gate = inspectClientHookSurfaceContract({ gatesPath });
+  assert.equal(gate.status, "verified");
+  assert.match(gate.evidence, /codex/);
+  assert.match(gate.evidence, /missing=none/);
 });
 
 test("classifies direct client visibility", () => {

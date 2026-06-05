@@ -205,6 +205,57 @@ for (const expected of [
     fail(`operator reporting gates missing route: ${expected}`);
   }
 }
+if (!Array.isArray(operatorReportingGates.clientHookSurfaces)) {
+  fail('operator reporting gates must define clientHookSurfaces');
+}
+const hookSurfacesByClient = new Map(
+  operatorReportingGates.clientHookSurfaces.map((surface) => [
+    surface.client,
+    surface,
+  ]),
+);
+for (const expected of ['codex', 'chatgpt', 'claude-code', 'cursor']) {
+  if (!hookSurfacesByClient.has(expected)) {
+    fail(`operator reporting gates missing client hook surface: ${expected}`);
+  }
+}
+for (const surface of operatorReportingGates.clientHookSurfaces) {
+  for (const field of [
+    'client',
+    'bestAvailableSurface',
+    'directReadoutPath',
+    'fallbackPath',
+    'passiveHookSupport',
+    'nativeHookCoverageStatus',
+    'sufficiency',
+    'currentGap',
+  ]) {
+    if (!surface[field] || typeof surface[field] !== 'string') {
+      fail(
+        `client hook surface ${surface.client ?? '<unknown>'} must include ${field}`,
+      );
+    }
+  }
+}
+if (!hookSurfacesByClient.get('codex').passiveHookSupport.includes('Stop')) {
+  fail('Codex hook surface must explicitly include Stop hook coverage');
+}
+if (
+  hookSurfacesByClient.get('chatgpt').passiveHookSupport !==
+  'none in this package'
+) {
+  fail('ChatGPT hook surface must not claim local passive hook support');
+}
+if (
+  !hookSurfacesByClient
+    .get('cursor')
+    .directReadoutPath.includes('get_operator_chronicle')
+) {
+  fail('Cursor hook surface must preserve direct chronicle readout path');
+}
+if (!hookSurfacesByClient.get('claude-code').fallbackPath.includes('morning_brief')) {
+  fail('Claude Code hook surface must preserve the morning_brief fallback');
+}
 if (!Array.isArray(operatorReportingGates.gates)) {
   fail('operator reporting gates must define gates');
 }
@@ -212,6 +263,7 @@ const gatesById = new Map(operatorReportingGates.gates.map((gate) => [gate.id, g
 for (const expected of [
   'hosted_mcp_descriptor',
   'local_reporting_gate_diagnostics',
+  'client_hook_surface_contract',
   'codex_direct_tool_exposure',
   'codex_morning_brief_fallback',
   'codex_stop_reconciliation',
@@ -354,6 +406,7 @@ for (const expected of [
   'get_operator_chronicle',
   'raw_transcripts_sent',
   'orgx_codex_plugin_reporting_gate_diagnostics',
+  'client_hook_surface_contract',
   'recommendedActions',
   'cursor-agent login',
 ]) {

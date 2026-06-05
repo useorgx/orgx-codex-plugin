@@ -40,6 +40,48 @@
       ]
     }
   ],
+  "clientHookSurfaces": [
+    {
+      "client": "codex",
+      "bestAvailableSurface": "MCP tool list plus Codex lifecycle hooks",
+      "directReadoutPath": "get_operator_chronicle when the active callable namespace exposes it",
+      "fallbackPath": "_orgx_recommend or orgx_recommend with mode=\"morning_brief\" when the session only exposes stale wrapper tools",
+      "passiveHookSupport": "SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PermissionRequest, and Stop hooks via hooks/codex/hooks.json",
+      "nativeHookCoverageStatus": "verified_for_passive_reconciliation",
+      "sufficiency": "partial",
+      "currentGap": "Direct get_operator_chronicle exposure is still open in this active Codex session, so passive Stop hooks and the morning-brief fallback are not enough to claim seamless live reporting."
+    },
+    {
+      "client": "chatgpt",
+      "bestAvailableSurface": "Hosted MCP / Apps SDK tool discovery, action controls, and widgets",
+      "directReadoutPath": "ChatGPT app action for get_operator_chronicle after tool scan or refresh",
+      "fallbackPath": "ChatGPT app action for orgx_recommend with mode=\"morning_brief\" if the scan is stale but the compatibility tool is visible",
+      "passiveHookSupport": "none in this package",
+      "nativeHookCoverageStatus": "not_available",
+      "sufficiency": "blocked_by_client_access",
+      "currentGap": "Action-list UI proof is blocked; Chrome is logged out, native ChatGPT inspection is unavailable here, and Arc automation is unsafe until the unrelated modal is cleared."
+    },
+    {
+      "client": "claude-code",
+      "bestAvailableSurface": "Claude MCP tools plus lifecycle hooks through the separate orgx-claude-code-plugin",
+      "directReadoutPath": "mcp__orgx__get_operator_chronicle in Claude Code",
+      "fallbackPath": "orgx_recommend with mode=\"morning_brief\" when direct tool refresh is stale",
+      "passiveHookSupport": "SessionStart, PostToolUse, SubagentStop, and Stop through the Claude plugin, not this Codex package",
+      "nativeHookCoverageStatus": "verified_in_adjacent_plugin",
+      "sufficiency": "monitoring",
+      "currentGap": "Direct readout is historically proven, but Stop/SessionEnd hook reliability still needs monitoring because a later smoke hung and was killed."
+    },
+    {
+      "client": "cursor",
+      "bestAvailableSurface": "Cursor MCP tool surface plus repo-local rules and commands",
+      "directReadoutPath": "cursor-agent mcp list-tools orgx exposes get_operator_chronicle, then the OrgX: Morning Brief command calls it first",
+      "fallbackPath": "orgx_recommend with mode=\"morning_brief\" from the repo-local OrgX: Morning Brief command if direct tool refresh is stale",
+      "passiveHookSupport": "none equivalent in this package",
+      "nativeHookCoverageStatus": "mcp_command_only",
+      "sufficiency": "open",
+      "currentGap": "Cursor config shape is present, but cursor-agent auth and list/list-tools durability are still open."
+    }
+  ],
   "gates": [
     {
       "id": "local_reporting_gate_diagnostics",
@@ -48,6 +90,14 @@
       "route": "passive_hook_reconciliation",
       "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, and Claude MCP config. Live text-mode run at 2026-06-05 10:50 CDT reported 3 open gates and led with a Cursor recovery sequence: cursor-agent login, cursor-agent mcp list, then cursor-agent mcp login orgx if list-tools still fails.",
       "nextStep": "Use the diagnostic command before claiming client reporting UX is seamless."
+    },
+    {
+      "id": "client_hook_surface_contract",
+      "client": "local",
+      "status": "verified",
+      "route": "passive_hook_reconciliation",
+      "evidence": "docs/operator-reporting-gates.json now includes a machine-readable clientHookSurfaces audit for Codex, ChatGPT, Claude Code, and Cursor, covering best available surface, direct readout path, fallback path, passive hook support, native hook coverage status, sufficiency, and current gap.",
+      "nextStep": "Keep hook-sufficiency audited separately from individual client runtime proof so unsupported hooks are not claimed as plugin coverage."
     },
     {
       "id": "hosted_mcp_descriptor",

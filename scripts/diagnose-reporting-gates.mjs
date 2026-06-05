@@ -4,7 +4,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
@@ -12,6 +12,9 @@ const execFile = promisify(execFileCallback);
 const DEFAULT_TIMEOUT_MS = 12_000;
 const SERVER_JSON_URL = "https://mcp.useorgx.com/server.json";
 const REQUIRED_CHRONICLE_TOOLS = ["get_operator_chronicle", "orgx_recommend"];
+const OPERATOR_REPORTING_GATES_PATH = fileURLToPath(
+  new URL("../docs/operator-reporting-gates.json", import.meta.url)
+);
 
 function parseArgs(argv) {
   const args = {};
@@ -403,6 +406,57 @@ function inspectWorkGraphReport({ homeDir = homedir() } = {}) {
   });
 }
 
+export function inspectClientHookSurfaceContract({
+  gatesPath = OPERATOR_REPORTING_GATES_PATH,
+} = {}) {
+  if (!existsSync(gatesPath)) {
+    return gate({
+      id: "client_hook_surface_contract",
+      client: "local",
+      status: "open",
+      evidence: "docs/operator-reporting-gates.json is missing.",
+      nextStep: "Restore the machine-readable client hook surface audit before claiming hook coverage.",
+    });
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(gatesPath, "utf8"));
+    const surfaces = Array.isArray(parsed.clientHookSurfaces) ? parsed.clientHookSurfaces : [];
+    const requiredClients = ["codex", "chatgpt", "claude-code", "cursor"];
+    const present = new Set(surfaces.map((surface) => surface?.client).filter(Boolean));
+    const missing = requiredClients.filter((client) => !present.has(client));
+    const complete = missing.length === 0 && surfaces.every((surface) => {
+      return [
+        "bestAvailableSurface",
+        "directReadoutPath",
+        "fallbackPath",
+        "passiveHookSupport",
+        "nativeHookCoverageStatus",
+        "sufficiency",
+        "currentGap",
+      ].every((field) => typeof surface?.[field] === "string" && surface[field].trim().length > 0);
+    });
+
+    return gate({
+      id: "client_hook_surface_contract",
+      client: "local",
+      status: complete ? "verified" : "open",
+      evidence: `client hook surface audit clients=${Array.from(present).sort().join(",") || "none"}; missing=${missing.join(",") || "none"}`,
+      nextStep: complete
+        ? "Keep hook-sufficiency audited separately from individual client runtime proof."
+        : "Document each client best surface, fallback, hook support level, sufficiency, and current gap.",
+    });
+  } catch (error) {
+    return gate({
+      id: "client_hook_surface_contract",
+      client: "local",
+      status: "open",
+      evidence: `client hook surface audit could not be parsed: ${error instanceof Error ? error.message : String(error)}`,
+      nextStep: "Fix docs/operator-reporting-gates.json before relying on reporting diagnostics.",
+    });
+  }
+}
+
 export function summarizeGates(gates) {
   const open = gates.filter((item) => ["open", "blocked_by_client_access", "unknown"].includes(item.status));
   const openGateIds = open.map((item) => item.id);
@@ -458,6 +512,7 @@ export async function main({
   gates.push(await inspectHostedMcp({ fetchImpl }));
   gates.push(inspectCodexHooks({ homeDir }));
   gates.push(inspectWorkGraphReport({ homeDir }));
+  gates.push(inspectClientHookSurfaceContract());
   gates.push(inspectCursorConfig({ homeDir }));
 
   const cursorStatus = await runCommand("cursor-agent", ["status"], { timeoutMs, execFileImpl });
