@@ -1,6 +1,6 @@
 {
   "name": "@useorgx/codex-plugin",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "OrgX Codex plugin with MCP access, initiative-aware skills, and a Sovereign Execution peer sidecar.",
   "type": "module",
   "private": true,
