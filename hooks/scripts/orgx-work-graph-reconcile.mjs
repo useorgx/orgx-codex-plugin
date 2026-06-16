@@ -12,6 +12,8 @@ import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 
+import { maybeEmitExecutionGraph } from "./emit-execution-graph.mjs";
+
 const WORK_GRAPH_SCHEMA_VERSION = "2.0.0";
 const WORK_GRAPH_FINGERPRINT_VERSION = "wgf_v1";
 const DEFAULT_OUTBOX = join(
@@ -955,6 +957,16 @@ export async function main({
       report,
       baseUrl: pickString(args.base_url, args["base-url"], env.ORGX_BASE_URL),
       apiKey: pickString(args.api_key, args["api-key"], env.ORGX_API_KEY),
+      fetchImpl,
+    });
+
+    // WEG keystone: also emit the execution graph derived from the same spooled
+    // records. OPT-IN (ORGX_EMIT_EXECUTION_GRAPH) and best-effort — it never
+    // fails the reconcile/post flow.
+    result.execution_graph = await maybeEmitExecutionGraph({
+      records: loaded.records,
+      env,
+      args,
       fetchImpl,
     });
   }
