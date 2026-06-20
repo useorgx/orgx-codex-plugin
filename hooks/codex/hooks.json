@@ -3,6 +3,9 @@
     "SessionStart": [
       {
         "command": "node hooks/scripts/orgx-session-hook.mjs --event=SessionStart --source_client=codex"
+      },
+      {
+        "command": "node hooks/scripts/hydrate-context-pack.mjs"
       }
     ],
     "UserPromptSubmit": [
