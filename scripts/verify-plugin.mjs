@@ -67,6 +67,12 @@ if (pkg.version !== manifest.version) {
 if (peerManifest.version !== pkg.version) {
   fail('plugin.manifest.json version must match package.json version');
 }
+if (pkg.peerDependencies?.['@useorgx/agent-memory-projections'] !== '>=0.1.0') {
+  fail('package.json must declare @useorgx/agent-memory-projections as an optional peer contract');
+}
+if (pkg.peerDependenciesMeta?.['@useorgx/agent-memory-projections']?.optional !== true) {
+  fail('@useorgx/agent-memory-projections peer dependency must be optional until the shared package is published');
+}
 if (!Array.isArray(peerManifest.capabilities)) {
   fail('plugin.manifest.json capabilities must be an array');
 }
@@ -101,6 +107,17 @@ if (
   )
 ) {
   fail('defaultPrompt chronicle prompt must document direct tool and stale-client fallback');
+}
+if (
+  !manifest.interface.defaultPrompt?.some(
+    (prompt) =>
+      prompt.includes('orgx_memory_context') &&
+      prompt.includes('source_refs') &&
+      prompt.includes('projection_targets') &&
+      prompt.includes('raw transcripts'),
+  )
+) {
+  fail('defaultPrompt must document orgx_memory_context projection guidance and raw transcript limits');
 }
 if (!manifest.interface.longDescription.includes('operator chronicle reporting')) {
   fail('longDescription must mention operator chronicle reporting');
@@ -153,8 +170,11 @@ if (orgx.type !== 'http') {
 if (orgx.url !== 'https://mcp.useorgx.com/mcp') {
   fail('mcpServers.orgx.url must target https://mcp.useorgx.com/mcp');
 }
-if (!String(orgx.note ?? '').includes('operator chronicle reporting')) {
-  fail('mcpServers.orgx.note must mention operator chronicle reporting');
+if (
+  !String(orgx.note ?? '').includes('operator chronicle reporting') ||
+  !String(orgx.note ?? '').includes('orgx_memory_context')
+) {
+  fail('mcpServers.orgx.note must mention operator chronicle reporting and orgx_memory_context');
 }
 
 for (const expected of [
@@ -165,6 +185,10 @@ for (const expected of [
   'Cursor',
   'get_operator_chronicle',
   'orgx_recommend',
+  'orgx_memory_context',
+  'source_refs',
+  'projection_targets',
+  'plugin visibility alone is not proof',
   'mode: "morning_brief"',
   'raw_transcripts_sent: false',
 ]) {
@@ -214,7 +238,7 @@ const hookSurfacesByClient = new Map(
     surface,
   ]),
 );
-for (const expected of ['codex', 'chatgpt', 'claude-code', 'cursor']) {
+for (const expected of ['codex', 'chatgpt', 'claude-code', 'cursor', 'opencode']) {
   if (!hookSurfacesByClient.has(expected)) {
     fail(`operator reporting gates missing client hook surface: ${expected}`);
   }
@@ -256,6 +280,9 @@ if (
 if (!hookSurfacesByClient.get('claude-code').fallbackPath.includes('morning_brief')) {
   fail('Claude Code hook surface must preserve the morning_brief fallback');
 }
+if (!hookSurfacesByClient.get('opencode').fallbackPath.includes('opencode')) {
+  fail('OpenCode hook surface must preserve passive opencode fallback evidence');
+}
 if (!Array.isArray(operatorReportingGates.gates)) {
   fail('operator reporting gates must define gates');
 }
@@ -272,7 +299,12 @@ for (const expected of [
   'cursor_morning_brief_command',
   'cursor_config_shape',
   'cursor_agent_auth',
+  'cursor_mcp_list',
+  'cursor_list_tools_orgx',
   'cursor_auth_durability',
+  'opencode_passive_work_graph',
+  'opencode_mcp_config',
+  'opencode_direct_readout',
   'accepted_goal_links_live_data',
 ]) {
   if (!gatesById.has(expected)) {
@@ -293,11 +325,20 @@ if (gatesById.get('chatgpt_action_list').status === 'verified') {
 if (gatesById.get('cursor_auth_durability').status === 'verified') {
   fail('cursor_auth_durability must not be marked verified until repeated list-tools calls work without login');
 }
-if (gatesById.get('cursor_agent_auth').status === 'verified') {
-  fail('cursor_agent_auth must not be marked verified while cursor-agent status reports Not logged in');
+if (
+  gatesById.get('cursor_agent_auth').status === 'verified' &&
+  !/authenticated|logged in|login successful/i.test(gatesById.get('cursor_agent_auth').evidence)
+) {
+  fail('cursor_agent_auth can only be marked verified with authenticated Cursor Agent evidence');
 }
-if (gatesById.get('accepted_goal_links_live_data').status === 'verified') {
-  fail('accepted_goal_links_live_data must not be marked verified while the chronicle reports provisional goal signals');
+const acceptedGoalGate = gatesById.get('accepted_goal_links_live_data');
+if (
+  acceptedGoalGate.status === 'verified' &&
+  !/decision [0-9a-f-]{36} to user_goal [0-9a-f-]{36}/i.test(
+    acceptedGoalGate.evidence,
+  )
+) {
+  fail('accepted_goal_links_live_data verified evidence must include a live decision id linked to a user_goal id');
 }
 
 for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {

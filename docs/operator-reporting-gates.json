@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastCheckedAt": "2026-06-05T10:50:00-05:00",
+  "lastCheckedAt": "2026-06-05T23:14:42-05:00",
   "purpose": "Machine-readable gates for the OrgX operator chronicle plugin UX.",
   "requiredReadoutFields": [
     "reportingNarrative.briefMarkdown",
@@ -79,7 +79,17 @@
       "passiveHookSupport": "none equivalent in this package",
       "nativeHookCoverageStatus": "mcp_command_only",
       "sufficiency": "open",
-      "currentGap": "Cursor config shape is present, but cursor-agent auth and list/list-tools durability are still open."
+      "currentGap": "Cursor config shape and MCP list discovery are now verified after updating Cursor Agent; remaining proof is OrgX MCP OAuth consent and repeated list-tools durability."
+    },
+    {
+      "client": "opencode",
+      "bestAvailableSurface": "OpenCode native plugin plus opencode.json MCP/plugin configuration",
+      "directReadoutPath": "OpenCode native plugin calls get_operator_chronicle or orgx_recommend mode=\"morning_brief\" from its configured OrgX MCP/tool bridge",
+      "fallbackPath": "Passive Work Graph reconciliation reads summary-only OpenCode events and transcripts as source_client=\"opencode\"",
+      "passiveHookSupport": "summary-only Work Graph reconciliation for ~/.opencode and orgx_opencode_plugin_runtime_hook events",
+      "nativeHookCoverageStatus": "mcp_configured_cli_missing",
+      "sufficiency": "partial",
+      "currentGap": "OpenCode appears in Work Graph source evidence and the user OpenCode config now exposes an OrgX remote MCP entry. A local OpenCode CLI is now installed on PATH and reads the OrgX MCP config; remaining proof is OrgX MCP OAuth consent and a direct chronicle or morning-brief readout."
     }
   ],
   "gates": [
@@ -88,7 +98,7 @@
       "client": "local",
       "status": "verified",
       "route": "passive_hook_reconciliation",
-      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, and Claude MCP config. Live text-mode run at 2026-06-05 10:50 CDT reported 3 open gates and led with a Cursor recovery sequence: cursor-agent login, cursor-agent mcp list, then cursor-agent mcp login orgx if list-tools still fails.",
+      "evidence": "orgx-codex-diagnose-reporting runs a redacted local health check for hosted MCP descriptor, Codex hooks, latest Work Graph report, Cursor config shape, Cursor Agent auth, Cursor MCP list/list-tools, optional Cursor login probe, OpenCode MCP config/direct CLI architecture, and Claude MCP config. Live JSON run on 2026-06-06 reported Cursor MCP approval still open and OpenCode MCP auth still pending.",
       "nextStep": "Use the diagnostic command before claiming client reporting UX is seamless."
     },
     {
@@ -96,7 +106,7 @@
       "client": "local",
       "status": "verified",
       "route": "passive_hook_reconciliation",
-      "evidence": "docs/operator-reporting-gates.json now includes a machine-readable clientHookSurfaces audit for Codex, ChatGPT, Claude Code, and Cursor, covering best available surface, direct readout path, fallback path, passive hook support, native hook coverage status, sufficiency, and current gap.",
+      "evidence": "docs/operator-reporting-gates.json now includes a machine-readable clientHookSurfaces audit for Codex, ChatGPT, Claude Code, Cursor, and OpenCode, covering best available surface, direct readout path, fallback path, passive hook support, native hook coverage status, sufficiency, and current gap.",
       "nextStep": "Keep hook-sufficiency audited separately from individual client runtime proof so unsupported hooks are not claimed as plugin coverage."
     },
     {
@@ -112,16 +122,16 @@
       "client": "codex",
       "status": "open",
       "route": "direct_mcp_readout",
-      "evidence": "This active Codex session still exposes only mcp__codex_apps__orgx wrapper tools even though bootstrap advertises get_operator_chronicle.",
-      "nextStep": "Capture a refreshed Codex plugin session where get_operator_chronicle is directly callable, or file the client schema-refresh gap with bootstrap/tool-list evidence."
+      "evidence": "This active Codex session still exposes only mcp__codex_apps__orgx wrapper tools rather than raw get_operator_chronicle, and a live _orgx_bootstrap call on 2026-06-06 failed with token_expired.",
+      "nextStep": "Refresh the Codex OrgX connector auth, then capture either direct get_operator_chronicle exposure or a working wrapper readout with bootstrap/tool-list evidence."
     },
     {
       "id": "codex_morning_brief_fallback",
       "client": "codex",
-      "status": "verified",
+      "status": "open",
       "route": "mcp_morning_brief_fallback",
-      "evidence": "_orgx_recommend mode=morning_brief returned ok=true, source_tool=get_operator_chronicle, reportingNarrative.briefMarkdown, chronology, artifacts, PR velocity, goals, initiatives, priorities, and data gaps.",
-      "nextStep": "Keep the default prompt and skills routing users to this fallback until direct tool exposure is proven."
+      "evidence": "Previously _orgx_recommend mode=morning_brief returned a Chronicle-backed readout, but the current Codex Apps OrgX wrapper auth is expired as of 2026-06-06.",
+      "nextStep": "Refresh Codex OrgX connector auth, then rerun _orgx_recommend mode=morning_brief and verify chronology, artifacts, PR velocity, goals, initiatives, priorities, and data gaps."
     },
     {
       "id": "codex_stop_reconciliation",
@@ -160,32 +170,80 @@
       "client": "cursor",
       "status": "verified",
       "route": "direct_mcp_readout",
-      "evidence": "Live diagnostic at 2026-06-05 10:45 CDT verified the redacted Cursor MCP config shape contains an orgx server entry with url host mcp.useorgx.com.",
-      "nextStep": "Treat remaining Cursor failures as auth or Cursor Agent loader behavior, not a missing OrgX URL."
+      "evidence": "Live diagnostic on 2026-06-06 verified the redacted workspace Cursor MCP config shape contains exactly one orgx server entry with keys type,url and url host mcp.useorgx.com.",
+      "nextStep": "Treat remaining Cursor failures as OrgX MCP OAuth consent or tool-list durability, not a missing OrgX URL."
+    },
+    {
+      "id": "cursor_isolated_config_discovery",
+      "client": "cursor",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "After updating Cursor Agent to 2026.06.04-5fd875e, live diagnostic on 2026-06-06 verified cursor-agent mcp list discovers an isolated OrgX-only workspace config.",
+      "nextStep": "Focus remaining Cursor failures on OAuth/session binding instead of config discovery."
     },
     {
       "id": "cursor_agent_auth",
       "client": "cursor",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "Live diagnostic on 2026-06-06 reported cursor-agent status is authenticated as the user account.",
+      "nextStep": "Do not treat the remaining Cursor reporting gap as Cursor Agent login; complete OrgX MCP OAuth consent."
+    },
+    {
+      "id": "cursor_mcp_list",
+      "client": "cursor",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "After updating Cursor Agent to 2026.06.04-5fd875e, live cursor-agent mcp list on 2026-06-06 includes orgx as not loaded and needing approval.",
+      "nextStep": "Keep the Cursor MCP list visible while completing OrgX MCP authentication."
+    },
+    {
+      "id": "cursor_list_tools_orgx",
+      "client": "cursor",
       "status": "open",
       "route": "direct_mcp_readout",
-      "evidence": "Live diagnostic at 2026-06-05 10:45 CDT reported cursor-agent status is Not logged in.",
-      "nextStep": "Run cursor-agent login before expecting durable Cursor MCP reporting."
+      "evidence": "After updating Cursor Agent, live cursor-agent mcp list-tools orgx on 2026-06-06 reports that MCP orgx requires authentication; cursor-agent mcp login orgx opens the OrgX OAuth flow and redirects to OrgX sign-in.",
+      "nextStep": "Complete OrgX sign-in/consent in the browser, then verify repeated cursor-agent mcp list-tools orgx calls expose get_operator_chronicle without another login."
     },
     {
       "id": "cursor_auth_durability",
       "client": "cursor",
       "status": "open",
       "route": "direct_mcp_readout",
-      "evidence": "Live diagnostic at 2026-06-05 10:45 CDT verified the redacted Cursor config shape contains orgx at mcp.useorgx.com, but cursor-agent status reports Not logged in, cursor-agent mcp list sees no configured servers, and cursor-agent mcp list-tools orgx fails with Client ID mismatch.",
-      "nextStep": "Log Cursor Agent in, resolve the CLI list/list-tools inconsistency, and refresh the Cursor OAuth/session binding until repeated list-tools orgx calls work without another login."
+      "evidence": "Cursor Agent auth, repo-local OrgX MCP config shape, isolated config discovery, and cursor-agent mcp list are verified after updating Cursor Agent. Durable auth is still unproven because OrgX MCP OAuth redirects to sign-in before list-tools can expose get_operator_chronicle.",
+      "nextStep": "Complete OrgX MCP OAuth consent and prove repeated list-tools orgx calls work without another login."
+    },
+    {
+      "id": "opencode_passive_work_graph",
+      "client": "opencode",
+      "status": "verified",
+      "route": "passive_hook_reconciliation",
+      "evidence": "The latest Work Graph report includes source_client=\"opencode\" and the reconciler scans ~/.opencode plus orgx_opencode_plugin_runtime_hook events without raw transcript bodies.",
+      "nextStep": "Keep OpenCode passive evidence marked as a backstop until direct OpenCode plugin readout is proven."
+    },
+    {
+      "id": "opencode_mcp_config",
+      "client": "opencode",
+      "status": "verified",
+      "route": "direct_mcp_readout",
+      "evidence": "Live diagnostic on 2026-06-06 verified ~/.config/opencode/opencode.json contains mcp.orgx with type=remote, enabled=true, and url host mcp.useorgx.com.",
+      "nextStep": "Install or expose the OpenCode CLI, authenticate OrgX MCP if prompted, and verify a direct get_operator_chronicle or morning-brief call."
+    },
+    {
+      "id": "opencode_direct_readout",
+      "client": "opencode",
+      "status": "open",
+      "route": "direct_mcp_readout",
+      "evidence": "Local OpenCode direct proof is still missing: ~/.config/opencode/opencode.json exposes an OrgX remote MCP entry, opencode 1.16.2 is now available on PATH, and `opencode mcp list` sees orgx at mcp.useorgx.com but reports it needs authentication. Local architecture also exists at the Superset wrapper, OpenCode source checkout, and OrgX OpenCode peer checkout.",
+      "nextStep": "Run opencode mcp auth orgx, complete OrgX browser consent, verify the configured OrgX MCP server lists get_operator_chronicle or orgx_recommend, then capture a direct chronicle or morning-brief tool call."
     },
     {
       "id": "accepted_goal_links_live_data",
       "client": "orgx-app",
-      "status": "open",
+      "status": "verified",
       "route": "direct_mcp_readout",
-      "evidence": "The accepted-goal writer shipped in OrgX PR #1728, but the live chronicle still reports no active user_goals or open workspace goals and falls back to pending goals_orchestrator decisions.",
-      "nextStep": "Verify accepted goal decisions exist in live data as first-class goals and remove the provisional fallback gap from the chronicle."
+      "evidence": "Live backfill on 2026-06-05 linked accepted goals_orchestrator decision 8127023e-9e76-40d9-ac72-e6f9912bfe2d to user_goal cf93ac6b-f5ae-404a-b20c-a5f6d6996ec0 for workspace 7af01a51-49b1-47d8-98b9-91a198debca8.",
+      "nextStep": "Keep a live regression that verifies accepted decisions remain visible as first-class goals in the operator chronicle."
     }
   ]
 }

@@ -5,6 +5,7 @@ Codex plugin package for OrgX:
 - OrgX MCP server wiring via `https://mcp.useorgx.com/mcp`
 - Operator chronicle reporting for yesterday/week/30-day decisions, PRs,
   artifacts, goals, gaps, and priorities
+- Source-backed memory projection through `orgx_memory_context`
 - Initiative-aware Codex skills for OrgX execution
 - Runtime reporting guidance and passive hook templates for progress, artifacts,
   blockers, and completion
@@ -62,6 +63,14 @@ with `mode: "morning_brief"` and present the same
 `reportingNarrative.briefMarkdown`. Direct `get_operator_chronicle` calls remain
 preferred when callable; the fallback prevents a stale plugin session from
 blocking the report.
+
+For durable project memory, call `orgx_memory_context` with `client: "codex"`
+before relying on remembered context. Treat OrgX as canonical memory and keep
+the returned `source_refs`, `confidence`, `stale_after`, `sensitivity`, and
+`projection_targets` visible in reasoning. Plugin visibility is not proof that
+the tool is callable; verify with one low-risk tool call in the active Codex
+session. Hooks and local outboxes must remain summary-only and must not persist
+raw transcripts, tokens, cookies, API keys, or one-time codes.
 
 ## Runtime hooks
 

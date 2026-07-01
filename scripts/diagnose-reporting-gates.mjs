@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { execFile as execFileCallback } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -15,6 +15,28 @@ const REQUIRED_CHRONICLE_TOOLS = ["get_operator_chronicle", "orgx_recommend"];
 const OPERATOR_REPORTING_GATES_PATH = fileURLToPath(
   new URL("../docs/operator-reporting-gates.json", import.meta.url)
 );
+function defaultLatestDiagnosticPath(homeDir = homedir()) {
+  return join(
+    homeDir,
+    ".config",
+    "useorgx",
+    "wizard",
+    "hooks",
+    "reports",
+    "latest-reporting-gates-diagnostic.json"
+  );
+}
+function defaultCodexReadoutProofPath(homeDir = homedir()) {
+  return join(
+    homeDir,
+    ".config",
+    "useorgx",
+    "wizard",
+    "hooks",
+    "reports",
+    "latest-codex-readout-proof.json"
+  );
+}
 
 function parseArgs(argv) {
   const args = {};
@@ -58,14 +80,26 @@ function gate({ id, client, status, evidence, nextStep }) {
   return { id, client, status, evidence, nextStep };
 }
 
+function readJsonIfPresent(path) {
+  if (!path || !existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    return {
+      parseError: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 function commandMissing(error) {
   return error?.code === "ENOENT" || /not found/i.test(String(error?.message ?? ""));
 }
 
-async function runCommand(command, args, { timeoutMs = DEFAULT_TIMEOUT_MS, execFileImpl = execFile } = {}) {
+async function runCommand(command, args, { timeoutMs = DEFAULT_TIMEOUT_MS, execFileImpl = execFile, cwd } = {}) {
   try {
     const result = await execFileImpl(command, args, {
       timeout: timeoutMs,
+      cwd,
       env: {
         ...process.env,
         NO_COLOR: "1",
@@ -89,6 +123,76 @@ async function runCommand(command, args, { timeoutMs = DEFAULT_TIMEOUT_MS, execF
       stderr: stripAnsi(error?.stderr),
       text: compactOutput(error?.stdout, error?.stderr || error?.message),
     };
+  }
+}
+
+export async function inspectCursorIsolatedOrgxConfig({
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  execFileImpl = execFile,
+} = {}) {
+  const tempRoot = mkdtempSync(join(tmpdir(), "orgx-cursor-isolated-"));
+  try {
+    mkdirSync(join(tempRoot, ".cursor"), { recursive: true });
+    writeFileSync(
+      join(tempRoot, ".cursor", "mcp.json"),
+      JSON.stringify(
+        {
+          mcpServers: {
+            orgx: {
+              type: "http",
+              url: "https://mcp.useorgx.com/mcp",
+            },
+          },
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const result = await runCommand("cursor-agent", ["mcp", "list"], {
+      timeoutMs,
+      execFileImpl,
+      cwd: tempRoot,
+    });
+
+    if (result.missing) {
+      return gate({
+        id: "cursor_isolated_config_discovery",
+        client: "cursor",
+        status: "unavailable",
+        evidence: "cursor-agent was not found on PATH.",
+        nextStep: "Install Cursor Agent before relying on Cursor reporting UX.",
+      });
+    }
+    if (/orgx/i.test(result.text)) {
+      return gate({
+        id: "cursor_isolated_config_discovery",
+        client: "cursor",
+        status: "verified",
+        evidence: "cursor-agent mcp list discovers an isolated OrgX-only workspace config.",
+        nextStep: "Focus remaining Cursor failures on OAuth/session binding instead of config discovery.",
+      });
+    }
+    if (/No MCP servers configured/i.test(result.text)) {
+      return gate({
+        id: "cursor_isolated_config_discovery",
+        client: "cursor",
+        status: "open",
+        evidence: "cursor-agent mcp list does not discover an isolated OrgX-only workspace config.",
+        nextStep:
+          "Treat Cursor Agent MCP discovery as broken for this CLI version; verify through Cursor IDE or update Cursor Agent before relying on CLI reporting.",
+      });
+    }
+    return gate({
+      id: "cursor_isolated_config_discovery",
+      client: "cursor",
+      status: "unknown",
+      evidence: result.text || "cursor-agent mcp list returned no classifiable output for isolated OrgX config.",
+      nextStep: "Inspect Cursor Agent MCP config discovery manually without printing secrets.",
+    });
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
@@ -185,6 +289,17 @@ export function classifyCursorListTools(result) {
       nextStep: "Refresh Cursor OAuth/session binding for orgx; durable reporting is not proven while this repeats.",
     });
   }
+  if (/Requested resource was not included in the authorization request/i.test(result.text)) {
+    return gate({
+      id: "cursor_list_tools_orgx",
+      client: "cursor",
+      status: "open",
+      evidence:
+        "cursor-agent mcp list-tools orgx failed OAuth resource validation: Requested resource was not included in the authorization request.",
+      nextStep:
+        "Deploy the OrgX MCP OAuth resource canonicalization fix, then rerun cursor-agent mcp login orgx and list-tools.",
+    });
+  }
   if (/login|oauth|auth/i.test(result.text) && !/get_operator_chronicle/i.test(result.text)) {
     return gate({
       id: "cursor_list_tools_orgx",
@@ -192,6 +307,15 @@ export function classifyCursorListTools(result) {
       status: "open",
       evidence: "cursor-agent mcp list-tools orgx requires authentication.",
       nextStep: "Run Cursor MCP login and verify repeated list-tools calls work without another login.",
+    });
+  }
+  if (/not been approved|needs approval|requires approval/i.test(result.text)) {
+    return gate({
+      id: "cursor_list_tools_orgx",
+      client: "cursor",
+      status: "open",
+      evidence: "cursor-agent mcp list-tools orgx reports the OrgX MCP server has not been approved.",
+      nextStep: "Approve/authenticate the OrgX MCP server in Cursor, then verify list-tools orgx includes get_operator_chronicle.",
     });
   }
   if (/get_operator_chronicle/i.test(result.text)) {
@@ -209,6 +333,66 @@ export function classifyCursorListTools(result) {
     status: "unknown",
     evidence: result.text || "cursor-agent mcp list-tools orgx returned no classifiable output.",
     nextStep: "Inspect Cursor list-tools output manually without printing secrets.",
+  });
+}
+
+export function classifyCursorLoginProbe(result) {
+  if (result.missing) {
+    return gate({
+      id: "cursor_mcp_login_probe",
+      client: "cursor",
+      status: "unavailable",
+      evidence: "cursor-agent was not found on PATH.",
+      nextStep: "Install Cursor Agent before relying on Cursor reporting UX.",
+    });
+  }
+  if (/Requested resource was not included in the authorization request/i.test(result.text)) {
+    return gate({
+      id: "cursor_mcp_login_probe",
+      client: "cursor",
+      status: "open",
+      evidence:
+        "cursor-agent mcp login orgx reaches the OAuth callback but fails resource validation: Requested resource was not included in the authorization request.",
+      nextStep:
+        "Deploy the OrgX MCP OAuth resource canonicalization fix on mcp.useorgx.com, then rerun cursor-agent mcp login orgx.",
+    });
+  }
+  if (/not been approved|needs approval|requires approval/i.test(result.text)) {
+    return gate({
+      id: "cursor_mcp_login_probe",
+      client: "cursor",
+      status: "open",
+      evidence: "cursor-agent mcp login orgx reports the OrgX MCP server has not been approved.",
+      nextStep:
+        "Approve the OrgX MCP server in Cursor, then rerun cursor-agent mcp login orgx.",
+    });
+  }
+  if (/Listening on .*callback|Opening your browser|requires authentication/i.test(result.text)) {
+    return gate({
+      id: "cursor_mcp_login_probe",
+      client: "cursor",
+      status: "open",
+      evidence: "cursor-agent mcp login orgx is waiting for browser consent.",
+      nextStep:
+        "Complete the browser consent flow, then rerun cursor-agent mcp list-tools orgx.",
+    });
+  }
+  if (/success|authenticated|logged in/i.test(result.text)) {
+    return gate({
+      id: "cursor_mcp_login_probe",
+      client: "cursor",
+      status: "verified",
+      evidence: "cursor-agent mcp login orgx completed.",
+      nextStep:
+        "Verify cursor-agent mcp list-tools orgx includes get_operator_chronicle.",
+    });
+  }
+  return gate({
+    id: "cursor_mcp_login_probe",
+    client: "cursor",
+    status: "unknown",
+    evidence: result.text || "cursor-agent mcp login orgx returned no classifiable output.",
+    nextStep: "Inspect Cursor MCP login output manually without printing secrets.",
   });
 }
 
@@ -293,6 +477,124 @@ export function inspectCursorConfig({ homeDir = homedir(), cwd = process.cwd() }
   });
 }
 
+export function inspectOpenCodeConfig({ homeDir = homedir() } = {}) {
+  const configPath = join(homeDir, ".config", "opencode", "opencode.json");
+  if (!existsSync(configPath)) {
+    return gate({
+      id: "opencode_mcp_config",
+      client: "opencode",
+      status: "open",
+      evidence: "~/.config/opencode/opencode.json is missing.",
+      nextStep: "Add an OrgX remote MCP entry before treating OpenCode direct reporting as configured.",
+    });
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8"));
+    const mcp = parsed?.mcp && typeof parsed.mcp === "object" ? parsed.mcp : {};
+    const orgx = mcp.orgx && typeof mcp.orgx === "object" ? mcp.orgx : undefined;
+    let orgxUrlHost = null;
+    if (typeof orgx?.url === "string") {
+      try {
+        orgxUrlHost = new URL(orgx.url).host;
+      } catch {
+        orgxUrlHost = "invalid-url";
+      }
+    }
+    const orgxType = typeof orgx?.type === "string" ? orgx.type : null;
+    const enabled = orgx?.enabled !== false;
+    const verified =
+      Boolean(orgx) &&
+      orgxType === "remote" &&
+      orgxUrlHost === "mcp.useorgx.com" &&
+      enabled;
+
+    return gate({
+      id: "opencode_mcp_config",
+      client: "opencode",
+      status: verified ? "verified" : "open",
+      evidence: `OpenCode MCP config checked; orgx_present=${Boolean(orgx)}; orgx_type=${orgxType ?? "missing"}; orgx_url_host=${orgxUrlHost ?? "missing"}; orgx_enabled=${enabled}`,
+      nextStep: verified
+        ? "Use opencode_direct_readout to verify the runnable CLI, OrgX MCP authentication, and direct chronicle or morning-brief call."
+        : "Configure OpenCode mcp.orgx as a remote server at mcp.useorgx.com.",
+    });
+  } catch (error) {
+    return gate({
+      id: "opencode_mcp_config",
+      client: "opencode",
+      status: "open",
+      evidence: `OpenCode config exists but JSON parsing failed: ${error instanceof Error ? error.message : String(error)}`,
+      nextStep: "Fix ~/.config/opencode/opencode.json before relying on OpenCode reporting UX.",
+    });
+  }
+}
+
+export async function inspectOpenCodeDirectReadout({
+  homeDir = homedir(),
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  execFileImpl = execFile,
+} = {}) {
+  const version = await runCommand("opencode", ["--version"], {
+    timeoutMs,
+    execFileImpl,
+  });
+  const supersetWrapperPresent = existsSync(join(homeDir, ".superset", "bin", "opencode"));
+  const sourceCheckoutPresent = existsSync(
+    join(homeDir, "Code", "opencode-ecosystem-orgx", "packages", "opencode", "package.json")
+  );
+  const peerCheckoutPresent = existsSync(
+    join(homeDir, "Code", "orgx-opencode-plugin-work-graph", "package.json")
+  );
+  const stateDirPresent =
+    existsSync(join(homeDir, ".local", "state", "opencode")) ||
+    existsSync(join(homeDir, ".opencode"));
+  const existingArchitecture = `superset_wrapper=${supersetWrapperPresent}; source_checkout=${sourceCheckoutPresent}; orgx_peer_checkout=${peerCheckoutPresent}; state_dir=${stateDirPresent}`;
+
+  if (version.missing || /Superset:\s*opencode not found/i.test(version.text)) {
+    return gate({
+      id: "opencode_direct_readout",
+      client: "opencode",
+      status: "open",
+      evidence: `OpenCode direct readout unavailable: opencode command is not backed by a runnable CLI; ${existingArchitecture}`,
+      nextStep:
+        "Build/install the existing OpenCode checkout or expose a real opencode binary on PATH, then verify the configured OrgX MCP server lists get_operator_chronicle or orgx_recommend.",
+    });
+  }
+
+  const mcpTools = await runCommand("opencode", ["mcp", "list"], {
+    timeoutMs,
+    execFileImpl,
+  });
+  if (/get_operator_chronicle|orgx_recommend/i.test(mcpTools.text)) {
+    return gate({
+      id: "opencode_direct_readout",
+      client: "opencode",
+      status: "verified",
+      evidence: "opencode mcp list exposes an OrgX chronicle or morning-brief tool.",
+      nextStep: "Capture a direct OpenCode chronicle or morning-brief call receipt.",
+    });
+  }
+  if (/needs authentication|requires authentication/i.test(mcpTools.text)) {
+    return gate({
+      id: "opencode_direct_readout",
+      client: "opencode",
+      status: "open",
+      evidence: `opencode is runnable and sees the OrgX MCP server, but OrgX MCP needs authentication; ${existingArchitecture}`,
+      nextStep:
+        "Run opencode mcp auth orgx, complete OrgX browser consent, then verify mcp list exposes get_operator_chronicle or orgx_recommend.",
+    });
+  }
+
+  return gate({
+    id: "opencode_direct_readout",
+    client: "opencode",
+    status: "open",
+    evidence: `opencode is runnable but direct OrgX chronicle tools were not visible from mcp list; ${existingArchitecture}`,
+    nextStep:
+      "Authenticate/configure the OpenCode OrgX MCP server, then verify mcp list includes get_operator_chronicle or orgx_recommend.",
+  });
+}
+
 export function classifyClaudeMcpGet(result) {
   if (result.missing) {
     return gate({
@@ -372,6 +674,118 @@ function inspectCodexHooks({ homeDir = homedir() } = {}) {
   });
 }
 
+export function inspectCodexReadoutProof({
+  homeDir = homedir(),
+  proofPath = defaultCodexReadoutProofPath(homeDir),
+} = {}) {
+  const requiredFields = [
+    "reportingNarrative.briefMarkdown",
+    "decisionChronology",
+    "artifactLedger",
+    "prVelocity",
+    "initiatives",
+    "goals",
+    "dataGaps",
+    "topPriorities",
+  ];
+  const proof = readJsonIfPresent(proofPath);
+
+  if (!proof) {
+    const evidence = `Codex readout proof receipt missing at ${proofPath}.`;
+    return [
+      gate({
+        id: "codex_direct_tool_exposure",
+        client: "codex",
+        status: "open",
+        evidence,
+        nextStep:
+          "Call get_operator_chronicle from Codex, write the bounded readout proof receipt, then rerun orgx-codex-diagnose-reporting.",
+      }),
+      gate({
+        id: "codex_morning_brief_fallback",
+        client: "codex",
+        status: "open",
+        evidence,
+        nextStep:
+          "If direct get_operator_chronicle is unavailable, call orgx_recommend mode=morning_brief and write the bounded readout proof receipt.",
+      }),
+    ];
+  }
+
+  if (proof.parseError) {
+    const evidence = `Codex readout proof receipt could not be parsed: ${proof.parseError}`;
+    return [
+      gate({
+        id: "codex_direct_tool_exposure",
+        client: "codex",
+        status: "open",
+        evidence,
+        nextStep: "Regenerate latest-codex-readout-proof.json as valid JSON.",
+      }),
+      gate({
+        id: "codex_morning_brief_fallback",
+        client: "codex",
+        status: "open",
+        evidence,
+        nextStep: "Regenerate latest-codex-readout-proof.json as valid JSON.",
+      }),
+    ];
+  }
+
+  const fields = proof.fieldPresence && typeof proof.fieldPresence === "object" ? proof.fieldPresence : {};
+  const missingFields = requiredFields.filter((field) => fields[field] !== true);
+  const visibleTools = Array.isArray(proof.visibleTools) ? proof.visibleTools : [];
+  const directVerified =
+    proof.client === "codex" &&
+    proof.route === "direct_mcp_readout" &&
+    proof.tool === "get_operator_chronicle" &&
+    visibleTools.includes("get_operator_chronicle") &&
+    missingFields.length === 0;
+  const fallbackVerified =
+    proof.client === "codex" &&
+    proof.route === "mcp_morning_brief_fallback" &&
+    proof.tool === "orgx_recommend" &&
+    proof.mode === "morning_brief" &&
+    proof.sourceTool === "get_operator_chronicle" &&
+    missingFields.length === 0;
+  const countEvidence = [
+    `workspace=${proof.workspaceId ?? "unknown"}`,
+    `period=${proof.period ?? "unknown"}`,
+    `decisions=${proof.counts?.decisionChronology ?? "unknown"}`,
+    `artifacts=${proof.counts?.artifactLedger ?? "unknown"}`,
+    `priorities=${proof.counts?.topPriorities ?? "unknown"}`,
+    `missingFields=${missingFields.join(",") || "none"}`,
+  ].join("; ");
+
+  return [
+    gate({
+      id: "codex_direct_tool_exposure",
+      client: "codex",
+      status: directVerified ? "verified" : "open",
+      evidence: directVerified
+        ? `Codex direct get_operator_chronicle readout receipt verified; ${countEvidence}`
+        : `Codex direct readout receipt is incomplete or not direct; route=${proof.route ?? "unknown"}; tool=${proof.tool ?? "unknown"}; ${countEvidence}`,
+      nextStep: directVerified
+        ? "Keep Codex direct Chronicle readout under session-refresh regression."
+        : "Call get_operator_chronicle from Codex and regenerate the bounded readout proof receipt.",
+    }),
+    gate({
+      id: "codex_morning_brief_fallback",
+      client: "codex",
+      status: fallbackVerified || directVerified ? "verified" : "open",
+      evidence: fallbackVerified
+        ? `Codex morning-brief fallback receipt verified; ${countEvidence}`
+        : directVerified
+          ? "Codex direct get_operator_chronicle is verified in this session; morning-brief fallback is not required for live readout."
+          : `Codex morning-brief fallback receipt is incomplete or missing; route=${proof.route ?? "unknown"}; tool=${proof.tool ?? "unknown"}; ${countEvidence}`,
+      nextStep:
+        fallbackVerified || directVerified
+          ? "Keep Codex fallback behavior as a regression path for stale tool-list sessions."
+          : "Call orgx_recommend mode=morning_brief from Codex and regenerate the bounded readout proof receipt.",
+    }),
+  ];
+}
+
 function inspectWorkGraphReport({ homeDir = homedir() } = {}) {
   const reportPath = join(
     homeDir,
@@ -422,7 +836,7 @@ export function inspectClientHookSurfaceContract({
   try {
     const parsed = JSON.parse(readFileSync(gatesPath, "utf8"));
     const surfaces = Array.isArray(parsed.clientHookSurfaces) ? parsed.clientHookSurfaces : [];
-    const requiredClients = ["codex", "chatgpt", "claude-code", "cursor"];
+    const requiredClients = ["codex", "chatgpt", "claude-code", "cursor", "opencode"];
     const present = new Set(surfaces.map((surface) => surface?.client).filter(Boolean));
     const missing = requiredClients.filter((client) => !present.has(client));
     const complete = missing.length === 0 && surfaces.every((surface) => {
@@ -460,6 +874,15 @@ export function inspectClientHookSurfaceContract({
 export function summarizeGates(gates) {
   const open = gates.filter((item) => ["open", "blocked_by_client_access", "unknown"].includes(item.status));
   const openGateIds = open.map((item) => item.id);
+  const gateById = new Map(gates.map((item) => [item.id, item]));
+  const cursorAuthVerified = gateById.get("cursor_agent_auth")?.status === "verified";
+  const cursorConfigVerified = gateById.get("cursor_config_shape")?.status === "verified";
+  const cursorListToolsGate = gateById.get("cursor_list_tools_orgx");
+  const cursorListToolsEvidence = cursorListToolsGate?.evidence ?? "";
+  const cursorLoginProbeGate = gateById.get("cursor_mcp_login_probe");
+  const cursorLoginProbeEvidence = cursorLoginProbeGate?.evidence ?? "";
+  const openCodeDirectGate = gateById.get("opencode_direct_readout");
+  const openCodeDirectEvidence = openCodeDirectGate?.evidence ?? "";
   const recommendedActions = [];
   if (openGateIds.includes("cursor_agent_auth")) {
     recommendedActions.push({
@@ -467,22 +890,62 @@ export function summarizeGates(gates) {
       action: "Run cursor-agent login, complete browser authentication, then rerun orgx-codex-diagnose-reporting.",
     });
   }
+  if (openGateIds.includes("cursor_isolated_config_discovery")) {
+    recommendedActions.push({
+      gate: "cursor_isolated_config_discovery",
+      action:
+        "Cursor Agent does not discover an isolated OrgX-only MCP config; update Cursor Agent or verify through Cursor IDE before treating CLI reporting as live.",
+    });
+  }
   if (openGateIds.includes("cursor_mcp_list")) {
     recommendedActions.push({
       gate: "cursor_mcp_list",
-      action: "After Cursor Agent login, run cursor-agent mcp list and confirm orgx is visible.",
+      action:
+        cursorAuthVerified && cursorConfigVerified
+          ? "Cursor Agent is authenticated and OrgX config is present, but cursor-agent mcp list still reports no servers; update Cursor Agent or inspect the MCP config loader before treating Cursor reporting as live."
+          : "After Cursor Agent login, run cursor-agent mcp list and confirm orgx is visible.",
     });
   }
   if (openGateIds.includes("cursor_list_tools_orgx")) {
     recommendedActions.push({
       gate: "cursor_list_tools_orgx",
-      action: "If orgx remains missing or mismatched, run cursor-agent mcp login orgx and then verify list-tools orgx includes get_operator_chronicle.",
+      action:
+        /Client ID mismatch/i.test(cursorListToolsEvidence)
+          ? "Run cursor-agent mcp login orgx; if Client ID mismatch persists, treat this as an MCP OAuth client-binding failure and verify get_operator_chronicle through another client until Cursor is fixed."
+          : /Requested resource was not included/i.test(cursorListToolsEvidence)
+            ? "Deploy the OrgX MCP OAuth resource canonicalization fix, then rerun cursor-agent mcp login orgx and verify list-tools orgx includes get_operator_chronicle."
+          : /requires authentication|not been approved|needs approval|requires approval|approve/i.test(
+                cursorListToolsEvidence
+              )
+            ? "Approve/authenticate the OrgX MCP server in Cursor, then verify cursor-agent mcp list-tools orgx includes get_operator_chronicle and remains durable across a fresh Cursor session."
+            : cursorAuthVerified
+              ? "Verify Cursor OrgX MCP approval/auth, then confirm list-tools orgx includes get_operator_chronicle."
+          : "If orgx remains missing or mismatched, run cursor-agent mcp login orgx and then verify list-tools orgx includes get_operator_chronicle.",
+      });
+  }
+  if (openGateIds.includes("cursor_mcp_login_probe")) {
+    recommendedActions.push({
+      gate: "cursor_mcp_login_probe",
+      action: /Requested resource was not included/i.test(cursorLoginProbeEvidence)
+        ? "Cursor MCP login is blocked by the hosted OAuth resource mismatch; deploy the mcp.useorgx.com canonicalization fix before asking the user to retry consent."
+        : /not been approved|needs approval|requires approval/i.test(cursorLoginProbeEvidence)
+          ? "Approve the OrgX MCP server in Cursor, then rerun cursor-agent mcp login orgx and list-tools orgx."
+        : "Complete Cursor MCP browser consent, then rerun cursor-agent mcp list-tools orgx.",
     });
   }
   if (openGateIds.includes("local_work_graph_report")) {
     recommendedActions.push({
       gate: "local_work_graph_report",
       action: "Run orgx-codex-reconcile-hooks to regenerate the summary-only local Work Graph report.",
+    });
+  }
+  if (openGateIds.includes("opencode_direct_readout")) {
+    recommendedActions.push({
+      gate: "opencode_direct_readout",
+      action:
+        /opencode is runnable|needs authentication/i.test(openCodeDirectEvidence)
+          ? "Run opencode mcp auth orgx, complete OrgX browser consent, then verify mcp list exposes get_operator_chronicle or orgx_recommend."
+          : "Build/install the existing OpenCode checkout or expose a real opencode binary on PATH, then verify the configured OrgX MCP server lists get_operator_chronicle or orgx_recommend.",
     });
   }
   return {
@@ -502,6 +965,7 @@ export async function main({
   fetchImpl = fetch,
   execFileImpl = execFile,
   homeDir = homedir(),
+  latestDiagnosticPath,
   now = () => new Date(),
   writeOutput = true,
 } = {}) {
@@ -511,9 +975,18 @@ export async function main({
 
   gates.push(await inspectHostedMcp({ fetchImpl }));
   gates.push(inspectCodexHooks({ homeDir }));
+  gates.push(
+    ...inspectCodexReadoutProof({
+      homeDir,
+      proofPath: args["codex-readout-proof"] ?? defaultCodexReadoutProofPath(homeDir),
+    })
+  );
   gates.push(inspectWorkGraphReport({ homeDir }));
   gates.push(inspectClientHookSurfaceContract());
   gates.push(inspectCursorConfig({ homeDir }));
+  gates.push(inspectOpenCodeConfig({ homeDir }));
+  gates.push(await inspectOpenCodeDirectReadout({ homeDir, timeoutMs, execFileImpl }));
+  gates.push(await inspectCursorIsolatedOrgxConfig({ timeoutMs, execFileImpl }));
 
   const cursorStatus = await runCommand("cursor-agent", ["status"], { timeoutMs, execFileImpl });
   gates.push(classifyCursorStatus(cursorStatus));
@@ -524,6 +997,13 @@ export async function main({
     execFileImpl,
   });
   gates.push(classifyCursorListTools(cursorTools));
+  if (args["probe-cursor-login"] === "true") {
+    const cursorLogin = await runCommand("cursor-agent", ["mcp", "login", "orgx"], {
+      timeoutMs,
+      execFileImpl,
+    });
+    gates.push(classifyCursorLoginProbe(cursorLogin));
+  }
 
   const claudeGet = await runCommand("claude", ["mcp", "get", "orgx"], { timeoutMs, execFileImpl });
   gates.push(classifyClaudeMcpGet(claudeGet));
@@ -535,6 +1015,15 @@ export async function main({
     summary: summarizeGates(gates),
     gates,
   };
+
+  const resolvedLatestDiagnosticPath =
+    latestDiagnosticPath === null
+      ? null
+      : latestDiagnosticPath ?? defaultLatestDiagnosticPath(homeDir);
+  if (args["write-latest"] !== "false" && resolvedLatestDiagnosticPath) {
+    mkdirSync(join(resolvedLatestDiagnosticPath, ".."), { recursive: true });
+    writeFileSync(resolvedLatestDiagnosticPath, JSON.stringify(report, null, 2), "utf8");
+  }
 
   if (writeOutput && args.json !== "false") {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

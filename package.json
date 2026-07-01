@@ -43,6 +43,14 @@
   "dependencies": {
     "@useorgx/orgx-gateway-sdk": "github:useorgx/orgx-gateway-sdk"
   },
+  "peerDependencies": {
+    "@useorgx/agent-memory-projections": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@useorgx/agent-memory-projections": {
+      "optional": true
+    }
+  },
   "engines": {
     "node": ">=18.0.0"
   }
