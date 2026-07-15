@@ -28,6 +28,7 @@
     "lib/peer/CodexDriver.mjs",
     "lib/peer/peer.mjs",
     "lib/peer/README.md",
+    "lib/peer/sentry.mjs",
     "plugin.manifest.json",
     "scripts/diagnose-reporting-gates.mjs",
     "scripts/verify-plugin.mjs",
@@ -41,6 +42,7 @@
     "peer:start": "node lib/peer/cli.mjs"
   },
   "dependencies": {
+    "@sentry/node": "10.65.0",
     "@useorgx/orgx-gateway-sdk": "github:useorgx/orgx-gateway-sdk#40871edeb9b92eaf4403c0ba7270a74204ba425f",
     "ws": "^8.18.3"
   },
