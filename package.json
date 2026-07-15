@@ -3,7 +3,19 @@
   "version": "0.1.7",
   "description": "OrgX Codex plugin with MCP access, initiative-aware skills, and a Sovereign Execution peer sidecar.",
   "type": "module",
-  "private": true,
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/useorgx/orgx-codex-plugin.git"
+  },
+  "homepage": "https://github.com/useorgx/orgx-codex-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/useorgx/orgx-codex-plugin/issues"
+  },
   "bin": {
     "orgx-codex-peer": "lib/peer/cli.mjs",
     "orgx-codex-reconcile-hooks": "hooks/scripts/orgx-work-graph-reconcile.mjs",
@@ -39,6 +51,7 @@
   "scripts": {
     "check": "node scripts/verify-plugin.mjs",
     "test": "node --test lib/peer/peer.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-reconcile-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs scripts/diagnose-reporting-gates.test.mjs",
+    "prepublishOnly": "npm run check && npm test",
     "peer:start": "node lib/peer/cli.mjs"
   },
   "dependencies": {
