@@ -1,6 +1,6 @@
 # OrgX Peer Sidecar for Codex
 
-This folder adds a **peer sidecar** to `@useorgx/codex-plugin` so OrgX can dispatch tasks to the user's local `codex` CLI session. The existing skill catalog under `skills/` is shared; the peer spawns `codex exec --json --skip-git-repo-check` with the rendered prompt and translates Codex JSONL lifecycle events into OrgX peer messages.
+This folder adds a **peer sidecar** to `@useorgx/codex-plugin` so OrgX can dispatch tasks to the user's local `codex` CLI session. The existing skill catalog under `skills/` is shared. Production dispatch uses `codex app-server --stdio`, which keeps native questions and approvals open while OrgX routes them to the initiative Attention queue and returns the answer to the exact waiting request.
 
 ## Run
 
@@ -25,10 +25,12 @@ await peer.stop();
 - `gateway:drive`
 - `plugin:heartbeat`
 
-See `@useorgx/orgx-gateway-sdk` (https://github.com/useorgx/orgx-gateway-sdk) for the wire protocol. Tests use `node --test` with a fake `codex` shim on PATH.
+See `@useorgx/orgx-gateway-sdk` (https://github.com/useorgx/orgx-gateway-sdk) for the wire protocol. The peer negotiates protocol v3 so the gateway can deliver `attention.resolve` and receive monotonic continuation receipts.
 
-The dependency is pinned to the SDK release that supports both Gateway v1 and
-v2. This peer deliberately negotiates v1 today: a successful Codex process is
-not, by itself, a canonical `ProofPacket`. The protocol will move to v2 only
-when the driver can return the envelope-bound proof, receipt, artifact, cost,
-and outcome references required by `ExecutionResult`.
+`codex exec --json` remains as a compatibility path for driver tests and older
+integrators. It cannot preserve `request_user_input` or approval server requests,
+so OrgX peer dispatch does not use that path in production.
+
+Secret-marked questions are never sent to OrgX. App-server receives an explicit
+error telling the operator to enter the value in a local Codex UI, so API keys
+and other sensitive answers cannot enter the remote Attention record.
