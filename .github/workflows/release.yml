@@ -39,7 +39,7 @@ jobs:
         run: mkdir -p artifacts && npm pack --pack-destination artifacts
 
       - name: Publish to npm
-        run: npm publish artifacts/*.tgz --access public
+        run: npm publish ./artifacts/*.tgz --access public
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
