@@ -907,7 +907,7 @@ export async function postWorkGraphReport({
     },
     body: JSON.stringify({
       report,
-      public_share: true,
+      public_share: false,
       attach_artifact: false,
     }),
   });
