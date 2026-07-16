@@ -52,7 +52,7 @@ test("Stop hook writes a local Work Graph report without OrgX credentials", asyn
   assert.equal(written.work_graph_fingerprint, result.work_graph_fingerprint);
 });
 
-test("Stop hook does not post unless posting is explicitly enabled", async () => {
+test("Stop hook supports explicitly disabling authenticated replay", async () => {
   const dir = mkdtempSync(join(tmpdir(), "orgx-stop-reconcile-no-post-"));
   const outbox = join(dir, "events.jsonl");
   const output = join(dir, "latest.json");
@@ -65,6 +65,7 @@ test("Stop hook does not post unless posting is explicitly enabled", async () =>
       `--outbox=${outbox}`,
       `--output=${output}`,
       "--api-key=oxk_test_token",
+      "--post=false",
     ],
     env: {},
     now: () => new Date(NOW),
@@ -82,7 +83,7 @@ test("Stop hook does not post unless posting is explicitly enabled", async () =>
   assert.equal(calls, 0);
 });
 
-test("Stop hook posts only with opt-in and an API key", async () => {
+test("Stop hook replays privately by default with an API key", async () => {
   const dir = mkdtempSync(join(tmpdir(), "orgx-stop-reconcile-post-"));
   const outbox = join(dir, "events.jsonl");
   const output = join(dir, "latest.json");
@@ -97,7 +98,6 @@ test("Stop hook posts only with opt-in and an API key", async () => {
       "--base-url=https://example.test",
     ],
     env: {
-      ORGX_HOOK_RECONCILE_POST: "true",
       ORGX_API_KEY: "oxk_test_token",
     },
     now: () => new Date(NOW),
@@ -115,6 +115,7 @@ test("Stop hook posts only with opt-in and an API key", async () => {
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, "https://example.test/api/client/work-graph/reports");
   assert.equal(calls[0].options.headers.Authorization, "Bearer oxk_test_token");
+  assert.equal(JSON.parse(calls[0].options.body).public_share, false);
 });
 
 test("Stop hook skips posting when opt-in is enabled without an API key", async () => {

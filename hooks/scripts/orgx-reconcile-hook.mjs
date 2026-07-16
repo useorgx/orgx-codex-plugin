@@ -41,10 +41,12 @@ function buildReconcileArgv({ args, env }) {
   const maxRecords = pickString(args.max_records, args["max-records"]);
   const baseUrl = pickString(args.base_url, args["base-url"], env.ORGX_BASE_URL);
   const apiKey = pickString(args.api_key, args["api-key"], env.ORGX_API_KEY);
-  const shouldPost =
-    isEnabled(args.post) ||
-    isEnabled(env.ORGX_HOOK_RECONCILE_POST) ||
-    isEnabled(env.ORGX_WIZARD_HOOK_RECONCILE_POST);
+  const explicitPost = pickString(
+    args.post,
+    env.ORGX_HOOK_RECONCILE_POST,
+    env.ORGX_WIZARD_HOOK_RECONCILE_POST
+  );
+  const shouldPost = explicitPost ? isEnabled(explicitPost) : Boolean(apiKey);
 
   const argv = [`--output=${output}`, `--cwd=${cwd}`];
   if (outbox) argv.push(`--outbox=${outbox}`);
