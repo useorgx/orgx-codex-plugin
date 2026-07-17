@@ -68,7 +68,7 @@
   },
   "dependencies": {
     "@sentry/node": "10.65.0",
-    "@useorgx/orgx-gateway-sdk": "github:useorgx/orgx-gateway-sdk#37ca6ddedee954fd7192640472ce5dc087f90fed",
+    "@useorgx/orgx-gateway-sdk": "github:useorgx/orgx-gateway-sdk#c3dfd41ad01d44660457961f3ddee080e1596faa",
     "ws": "^8.18.3"
   },
   "engines": {
