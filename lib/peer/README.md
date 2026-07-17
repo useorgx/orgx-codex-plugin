@@ -8,6 +8,108 @@ This folder adds a **peer sidecar** to `@useorgx/codex-plugin` so OrgX can dispa
 ORGX_API_KEY=oxk_... ORGX_WORKSPACE_ID=<uuid> node lib/peer/cli.mjs
 ```
 
+This default configuration accepts interactive OrgX dispatches only. To let
+OrgX select this user-controlled runner for unattended Codex work, opt in on
+the runner itself:
+
+```bash
+ORGX_AUTONOMOUS_DISPATCH_ENABLED=true \
+ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree \
+ORGX_RUNNER_INSTANCE_ID=<installer-persisted-service-id> \
+ORGX_ACTIVATION_ATTEMPT_ID=<installer-activation-attempt-id> \
+ORGX_RUNNER_ROLE=candidate \
+ORGX_API_KEY=oxk_... \
+ORGX_WORKSPACE_ID=<uuid> \
+node lib/peer/cli.mjs
+```
+
+Only the exact string `true` requests autonomous dispatch. The repo path is a
+runner-owned binding: it must canonicalize to an existing git worktree root and
+cannot be overridden by a Gateway task. Missing, relative, home-directory,
+filesystem-root, nested, or conflicting paths fail closed. Service installers
+should store the canonical path in a mode-0600 state file and export it without
+sourcing arbitrary shell text.
+
+`ORGX_RUNNER_INSTANCE_ID` is also required for autonomous service launches.
+The installer must generate and persist a different stable value for each
+staged or canonical service instance. The peer sends that exact identity as
+`runner_instance_id` in both the activation heartbeat and Gateway stream query,
+so activation can distinguish a candidate service from its predecessor. A
+manual interactive launch may omit the variable; the CLI then persists a
+workspace-and-installation-scoped random identity under
+`~/.orgx/codex-peer/runner-instances/` with mode 0600. Programmatic autonomous
+callers do not receive that fallback and must pass `runnerInstanceId`.
+
+Managed staged activation also exports `ORGX_ACTIVATION_ATTEMPT_ID` together
+with `ORGX_RUNNER_ROLE=candidate` or `ORGX_RUNNER_ROLE=canonical`. The pair is
+validated together and sent only in the presence heartbeat; the WebSocket query
+continues to carry the instance ID, while the server binds attempt and role from
+the authenticated credential metadata. Omitting both preserves manual legacy
+operation, but a partial or unknown-role binding fails before network startup.
+
+The heartbeat distinguishes requested, repo-ready, and MCP-ready states. It
+reports autonomous dispatch enabled only when the opt-in, checkout, and local
+`orgx` MCP configuration are all ready. Every autonomous run then validates the
+signed V1 context/lease/tool bundle, verifies and injects the actual resolved
+skill instructions bound by the runtime profile and execution envelope,
+launches Codex with only the exact MCP tools enabled, disables every other
+configured MCP server, and checks
+`mcpServerStatus/list` tool names and input schemas before `turn/start`. Any
+unsupported Codex version, missing server, extra tool, schema drift, expired
+lease, or malformed lineage stops before model execution. Protocol V2 remains
+disabled until the plugin can supply real server-issued proof and verification
+IDs.
+
+Transport success is not mission success. The autonomous terminal gate reads
+the signed mission completion policy, work-node evidence requirements, and
+quality-bar ship thresholds. File/tool activity can establish concrete action
+evidence, but assistant prose cannot create verifier evidence. A run with no
+artifact/action receipt is `blocked`; a concrete run still missing qualified
+independent verification is `awaiting_review`; and a verifier below the signed
+independence, score, confidence, outcome-confidence, or critical-observation
+threshold is `blocked`. The peer preserves `shipped` only after every required
+evidence type and quality threshold passes. A signature-shaped verifier record
+is not trusted on shape alone: a runner-owned callback must authenticate it.
+The packaged peer supplies no permissive default, so production autonomous work
+without that trusted host integration remains `awaiting_review`.
+
+The signed native policy is separate from the MCP manifest. Non-engineering
+work uses Codex's `readOnly` sandbox and the stable `shell_tool=false` switch;
+only an engineering agent with `engineering_execution` bound into both the work
+node and capability lease may receive `workspaceWrite` plus shell access. Codex
+does not currently expose a complete native-tool inventory over app-server, so
+the peer does not claim that read-only turns contain only MCP tools. The sandbox
+is the write boundary for remaining non-shell native utilities.
+
+An opted-in peer still accepts user-initiated dispatches, but only when the
+Gateway explicitly places `dispatch_class: interactive` on the task. Background
+dispatches require `dispatch_class: autonomous` plus the full signed context;
+missing, unknown, or contradictory classes fail closed. Configure the hosted
+OrgX MCP server with `codex mcp add orgx --url https://mcp.useorgx.com/mcp` and
+complete `codex mcp login orgx`. The `oxk_` Gateway key below must never be
+reused as the MCP OAuth token.
+
+Before yielding any terminal completion or failure to the Gateway SDK, the
+peer atomically writes it to a workspace-scoped disk outbox. WebSocket writes
+do not clear the record. An independent idempotent HTTP terminal POST clears it
+only on 2xx; a server rejection or process restart leaves it queued for replay.
+The default is under `~/.orgx/codex-peer/receipt-outbox/`; operators can set
+`ORGX_RECEIPT_OUTBOX_PATH` to a durable service-owned directory.
+
+Before writing the autonomous setting, an installer can run:
+
+```bash
+ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree \
+  orgx-codex-peer check-autonomous-readiness
+```
+
+This one-shot command does not require `ORGX_API_KEY`. It starts no model turn
+and exits nonzero unless the repo, ChatGPT subscription login, app-server RPC,
+OrgX MCP OAuth, exact one-tool overlay, and bounded bootstrap schema all pass.
+The app-server v2 wire value is `authStatus: "oAuth"`; the separate
+`codex mcp list --json` CLI surface uses `auth_status: "o_auth"` and should be
+normalized independently by external installers.
+
 Programmatic:
 
 ```js
@@ -16,6 +118,11 @@ import { startPeer } from '@useorgx/codex-plugin/peer';
 const peer = await startPeer({
   apiKey: process.env.ORGX_API_KEY,
   workspaceId: process.env.ORGX_WORKSPACE_ID,
+  runnerInstanceId: process.env.ORGX_RUNNER_INSTANCE_ID,
+  activationAttemptId: process.env.ORGX_ACTIVATION_ATTEMPT_ID,
+  runnerRole: process.env.ORGX_RUNNER_ROLE,
+  autonomousDispatchEnabled: true,
+  autonomousRepoPath: process.env.ORGX_AUTONOMOUS_REPO_PATH,
 });
 await peer.stop();
 ```
