@@ -135,6 +135,27 @@ the runtime profile and execution envelope before adding them to the Codex
 prompt. This permission applies only to the Codex runner and does not authorize
 unattended use of an Anthropic subscription.
 
+A completed Codex turn is not sufficient to claim `shipped`. For autonomous
+runs, the peer compiles the required evidence types, verifier independence,
+minimum outcome confidence, judged score, verdict confidence, and critical
+observation ceiling from the content-verified mission/work-node/quality-bar
+bundle. Empty or prose-only runs become `blocked`; concrete work without a
+qualified independent verifier becomes `awaiting_review`; and read-only work
+cannot satisfy an artifact-producing mission. Only a trusted OrgX verifier
+record meeting every signed threshold can preserve `shipped`. Verifier records
+are rejected by default even when their signature field is well-shaped; a
+runner-owned verifier callback must authenticate them. The packaged production
+peer does not configure a permissive callback, so unverified work remains
+`awaiting_review`.
+
+Terminal completions and failures are written to a mode-0700 disk outbox before
+the peer yields them to the Gateway SDK. The peer posts every terminal message
+independently to the idempotent HTTP receipt endpoint and removes its file only
+after an HTTP 2xx application acknowledgement. Rejected deliveries survive
+peer restarts and replay on startup, reconnect/heartbeat, and shutdown. Set
+`ORGX_RECEIPT_OUTBOX_PATH` to override the workspace-scoped default under
+`~/.orgx/codex-peer/receipt-outbox/`.
+
 Installers must run the one-shot gate after Codex login, OrgX MCP OAuth, and
 repo selection, but before persisting autonomous opt-in:
 
@@ -142,6 +163,11 @@ repo selection, but before persisting autonomous opt-in:
 ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree \
   orgx-codex-peer check-autonomous-readiness
 ```
+
+The readiness gate reads Codex app-server `mcpServerStatus/list`, whose current
+v2 success value is `authStatus: "oAuth"`. Installers that separately inspect
+`codex mcp list --json` must handle that CLI's snake-case surface
+(`auth_status: "o_auth"`) instead of reusing the app-server literal.
 
 The command needs no Gateway key. It exits zero only when the checkout is
 valid, Codex is ChatGPT-authenticated, current app-server RPC works, and a

@@ -40,6 +40,19 @@ lease, or malformed lineage stops before model execution. Protocol V2 remains
 disabled until the plugin can supply real server-issued proof and verification
 IDs.
 
+Transport success is not mission success. The autonomous terminal gate reads
+the signed mission completion policy, work-node evidence requirements, and
+quality-bar ship thresholds. File/tool activity can establish concrete action
+evidence, but assistant prose cannot create verifier evidence. A run with no
+artifact/action receipt is `blocked`; a concrete run still missing qualified
+independent verification is `awaiting_review`; and a verifier below the signed
+independence, score, confidence, outcome-confidence, or critical-observation
+threshold is `blocked`. The peer preserves `shipped` only after every required
+evidence type and quality threshold passes. A signature-shaped verifier record
+is not trusted on shape alone: a runner-owned callback must authenticate it.
+The packaged peer supplies no permissive default, so production autonomous work
+without that trusted host integration remains `awaiting_review`.
+
 The signed native policy is separate from the MCP manifest. Non-engineering
 work uses Codex's `readOnly` sandbox and the stable `shell_tool=false` switch;
 only an engineering agent with `engineering_execution` bound into both the work
@@ -56,6 +69,13 @@ OrgX MCP server with `codex mcp add orgx --url https://mcp.useorgx.com/mcp` and
 complete `codex mcp login orgx`. The `oxk_` Gateway key below must never be
 reused as the MCP OAuth token.
 
+Before yielding any terminal completion or failure to the Gateway SDK, the
+peer atomically writes it to a workspace-scoped disk outbox. WebSocket writes
+do not clear the record. An independent idempotent HTTP terminal POST clears it
+only on 2xx; a server rejection or process restart leaves it queued for replay.
+The default is under `~/.orgx/codex-peer/receipt-outbox/`; operators can set
+`ORGX_RECEIPT_OUTBOX_PATH` to a durable service-owned directory.
+
 Before writing the autonomous setting, an installer can run:
 
 ```bash
@@ -66,6 +86,9 @@ ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree \
 This one-shot command does not require `ORGX_API_KEY`. It starts no model turn
 and exits nonzero unless the repo, ChatGPT subscription login, app-server RPC,
 OrgX MCP OAuth, exact one-tool overlay, and bounded bootstrap schema all pass.
+The app-server v2 wire value is `authStatus: "oAuth"`; the separate
+`codex mcp list --json` CLI surface uses `auth_status: "o_auth"` and should be
+normalized independently by external installers.
 
 Programmatic:
 
