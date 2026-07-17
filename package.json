@@ -1,6 +1,6 @@
 {
   "name": "@useorgx/codex-plugin",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "OrgX Codex plugin with MCP access, initiative-aware skills, and a Sovereign Execution peer sidecar.",
   "type": "module",
   "private": false,
@@ -39,6 +39,12 @@
     "lib/peer/cli.mjs",
     "lib/peer/CodexDriver.mjs",
     "lib/peer/CodexAppServerClient.mjs",
+    "lib/peer/CodexMcpPolicy.mjs",
+    "lib/peer/autonomousCodexExecution.mjs",
+    "lib/peer/autonomousReadiness.mjs",
+    "lib/peer/autonomousDispatch.mjs",
+    "lib/peer/autonomousDispatchContract.mjs",
+    "lib/peer/autonomousDispatchContractChecks.mjs",
     "lib/peer/continuityHealth.mjs",
     "lib/peer/peer.mjs",
     "lib/peer/README.md",
@@ -53,7 +59,7 @@
   ],
   "scripts": {
     "check": "node scripts/verify-plugin.mjs",
-    "test": "node --test lib/peer/peer.test.mjs lib/peer/CodexAppServerClient.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-reconcile-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs scripts/diagnose-reporting-gates.test.mjs tests/continuity-health.test.mjs",
+    "test": "node --test lib/peer/peer.test.mjs lib/peer/CodexAppServerClient.test.mjs lib/peer/CodexMcpPolicy.test.mjs lib/peer/autonomousCodexExecution.test.mjs lib/peer/autonomousReadiness.test.mjs lib/peer/autonomousDispatch.test.mjs lib/peer/cli.test.mjs lib/peer/runtimeConfig.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-reconcile-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs scripts/diagnose-reporting-gates.test.mjs tests/continuity-health.test.mjs",
     "prepublishOnly": "npm run check && npm test",
     "peer:start": "node lib/peer/cli.mjs"
   },

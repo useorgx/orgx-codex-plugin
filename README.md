@@ -114,14 +114,41 @@ service environment and restart it:
 
 ```bash
 ORGX_AUTONOMOUS_DISPATCH_ENABLED=true
+ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree
 ```
 
-Only the exact string `true` opts in. Unset, misspelled, or differently cased
-values fail closed. Service installers should persist this setting alongside
-the runner's non-secret configuration; the heartbeat publishes an explicit
-boolean so removing the setting and restarting revokes autonomous eligibility.
-This permission applies only to the Codex runner and does not authorize
+Only the exact string `true` opts in. The repo path must be a canonical,
+existing git worktree root owned by the runner configuration; tasks cannot
+choose or override it. Unset, misspelled, invalid, or conflicting values fail
+closed. Service installers should persist the path in a mode-0600 state file
+and use it as the service working directory. Heartbeats publish requested,
+repo-ready, MCP-ready, and enabled states separately; enabled is true only when
+all gates pass. Before any autonomous model turn, the peer also proves the
+exact signed OrgX MCP tool names and schemas through Codex app-server. The
+installer must configure and authenticate the hosted `orgx` server with the
+official `codex mcp add` / `codex mcp login` flow; the Gateway key is not an MCP
+OAuth token. Opted-in peers accept normal user-initiated work only when the
+Gateway marks it `dispatch_class: interactive`; unattended work must be marked
+`autonomous` and carry the complete signed context. The context contains the
+actual resolved skill instructions, and the peer verifies their digests against
+the runtime profile and execution envelope before adding them to the Codex
+prompt. This permission applies only to the Codex runner and does not authorize
 unattended use of an Anthropic subscription.
+
+Installers must run the one-shot gate after Codex login, OrgX MCP OAuth, and
+repo selection, but before persisting autonomous opt-in:
+
+```bash
+ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree \
+  orgx-codex-peer check-autonomous-readiness
+```
+
+The command needs no Gateway key. It exits zero only when the checkout is
+valid, Codex is ChatGPT-authenticated, current app-server RPC works, and a
+read-only, shell-disabled app-server thread proves the authenticated OrgX server
+exposes exactly the bounded `orgx_bootstrap` MCP tool. This is an MCP inventory
+proof, not a claim that Codex has no other non-shell native tools. Real runs
+still compare every MCP tool schema to the signed per-run manifest.
 
 Dry-run reconciliation does not require OrgX credentials:
 
