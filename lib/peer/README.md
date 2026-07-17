@@ -8,6 +8,22 @@ This folder adds a **peer sidecar** to `@useorgx/codex-plugin` so OrgX can dispa
 ORGX_API_KEY=oxk_... ORGX_WORKSPACE_ID=<uuid> node lib/peer/cli.mjs
 ```
 
+This default configuration accepts interactive OrgX dispatches only. To let
+OrgX select this user-controlled runner for unattended Codex work, opt in on
+the runner itself:
+
+```bash
+ORGX_AUTONOMOUS_DISPATCH_ENABLED=true \
+ORGX_API_KEY=oxk_... \
+ORGX_WORKSPACE_ID=<uuid> \
+node lib/peer/cli.mjs
+```
+
+Only the exact string `true` enables autonomous dispatch. An unset value and
+all other values fail closed. A service installer must persist the variable in
+its runner-owned environment and restart the peer; each presence heartbeat
+then reports the current boolean so disabling the variable revokes eligibility.
+
 Programmatic:
 
 ```js
@@ -16,6 +32,7 @@ import { startPeer } from '@useorgx/codex-plugin/peer';
 const peer = await startPeer({
   apiKey: process.env.ORGX_API_KEY,
   workspaceId: process.env.ORGX_WORKSPACE_ID,
+  autonomousDispatchEnabled: true,
 });
 await peer.stop();
 ```

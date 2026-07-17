@@ -106,6 +106,23 @@ Raw transcripts are not sent by the hook template. The reconciler should keep
 transcripts local and write only redacted summaries, hashes, evidence refs,
 Work Graph fingerprints, and approved OrgX activity.
 
+## Subscription runner autonomy
+
+The Codex peer is interactive-only by default. To authorize OrgX to select the
+user-controlled runner for unattended work, set the following in the runner's
+service environment and restart it:
+
+```bash
+ORGX_AUTONOMOUS_DISPATCH_ENABLED=true
+```
+
+Only the exact string `true` opts in. Unset, misspelled, or differently cased
+values fail closed. Service installers should persist this setting alongside
+the runner's non-secret configuration; the heartbeat publishes an explicit
+boolean so removing the setting and restarting revokes autonomous eligibility.
+This permission applies only to the Codex runner and does not authorize
+unattended use of an Anthropic subscription.
+
 Dry-run reconciliation does not require OrgX credentials:
 
 ```bash

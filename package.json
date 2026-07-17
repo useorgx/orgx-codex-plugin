@@ -42,6 +42,7 @@
     "lib/peer/continuityHealth.mjs",
     "lib/peer/peer.mjs",
     "lib/peer/README.md",
+    "lib/peer/runtimeConfig.mjs",
     "lib/peer/sentry.mjs",
     "plugin.manifest.json",
     "scripts/diagnose-reporting-gates.mjs",
