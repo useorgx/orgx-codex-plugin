@@ -15,6 +15,9 @@ the runner itself:
 ```bash
 ORGX_AUTONOMOUS_DISPATCH_ENABLED=true \
 ORGX_AUTONOMOUS_REPO_PATH=/absolute/path/to/git-worktree \
+ORGX_RUNNER_INSTANCE_ID=<installer-persisted-service-id> \
+ORGX_ACTIVATION_ATTEMPT_ID=<installer-activation-attempt-id> \
+ORGX_RUNNER_ROLE=candidate \
 ORGX_API_KEY=oxk_... \
 ORGX_WORKSPACE_ID=<uuid> \
 node lib/peer/cli.mjs
@@ -26,6 +29,23 @@ cannot be overridden by a Gateway task. Missing, relative, home-directory,
 filesystem-root, nested, or conflicting paths fail closed. Service installers
 should store the canonical path in a mode-0600 state file and export it without
 sourcing arbitrary shell text.
+
+`ORGX_RUNNER_INSTANCE_ID` is also required for autonomous service launches.
+The installer must generate and persist a different stable value for each
+staged or canonical service instance. The peer sends that exact identity as
+`runner_instance_id` in both the activation heartbeat and Gateway stream query,
+so activation can distinguish a candidate service from its predecessor. A
+manual interactive launch may omit the variable; the CLI then persists a
+workspace-and-installation-scoped random identity under
+`~/.orgx/codex-peer/runner-instances/` with mode 0600. Programmatic autonomous
+callers do not receive that fallback and must pass `runnerInstanceId`.
+
+Managed staged activation also exports `ORGX_ACTIVATION_ATTEMPT_ID` together
+with `ORGX_RUNNER_ROLE=candidate` or `ORGX_RUNNER_ROLE=canonical`. The pair is
+validated together and sent only in the presence heartbeat; the WebSocket query
+continues to carry the instance ID, while the server binds attempt and role from
+the authenticated credential metadata. Omitting both preserves manual legacy
+operation, but a partial or unknown-role binding fails before network startup.
 
 The heartbeat distinguishes requested, repo-ready, and MCP-ready states. It
 reports autonomous dispatch enabled only when the opt-in, checkout, and local
@@ -98,6 +118,9 @@ import { startPeer } from '@useorgx/codex-plugin/peer';
 const peer = await startPeer({
   apiKey: process.env.ORGX_API_KEY,
   workspaceId: process.env.ORGX_WORKSPACE_ID,
+  runnerInstanceId: process.env.ORGX_RUNNER_INSTANCE_ID,
+  activationAttemptId: process.env.ORGX_ACTIVATION_ATTEMPT_ID,
+  runnerRole: process.env.ORGX_RUNNER_ROLE,
   autonomousDispatchEnabled: true,
   autonomousRepoPath: process.env.ORGX_AUTONOMOUS_REPO_PATH,
 });

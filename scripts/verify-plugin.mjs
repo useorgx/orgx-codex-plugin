@@ -429,6 +429,7 @@ for (const expectedPath of [
   'docs/client-hook-coverage.md',
   'docs/operator-reporting-gates.json',
   'lib/peer/peer.mjs',
+  'lib/peer/runnerInstanceIdentity.mjs',
   'scripts/diagnose-reporting-gates.mjs',
   'skills/',
 ]) {
