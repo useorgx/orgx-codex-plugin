@@ -85,7 +85,7 @@ An opted-in peer still accepts user-initiated dispatches, but only when the
 Gateway explicitly places `dispatch_class: interactive` on the task. Background
 dispatches require `dispatch_class: autonomous` plus the full signed context;
 missing, unknown, or contradictory classes fail closed. Configure the hosted
-OrgX MCP server with `codex mcp add orgx --url https://mcp.useorgx.com/mcp` and
+OrgX MCP server with `codex mcp add orgx --url https://mcp.useorgx.com/mcp?profile=commander` and
 complete `codex mcp login orgx`. The `oxk_` Gateway key below must never be
 reused as the MCP OAuth token.
 

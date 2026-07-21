@@ -150,8 +150,10 @@ const orgx = mcp.mcpServers.orgx;
 if (orgx.type !== 'http') {
   fail('mcpServers.orgx.type must be http');
 }
-if (orgx.url !== 'https://mcp.useorgx.com/mcp') {
-  fail('mcpServers.orgx.url must target https://mcp.useorgx.com/mcp');
+if (orgx.url !== 'https://mcp.useorgx.com/mcp?profile=commander') {
+  fail(
+    'mcpServers.orgx.url must target https://mcp.useorgx.com/mcp?profile=commander'
+  );
 }
 if (!String(orgx.note ?? '').includes('operator chronicle reporting')) {
   fail('mcpServers.orgx.note must mention operator chronicle reporting');

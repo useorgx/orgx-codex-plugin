@@ -44,12 +44,13 @@ test('continuity outbox reports pending replay and malformed dead letters', asyn
   );
 });
 
-test('plugin health publishes one complete cross-client contract', async () => {
+test('plugin health reports endpoint profile without fabricating capability counts', async () => {
   const health = await buildPluginContinuityHealth({
     manifest: { version: '1.2.3' },
     sourceClient: 'test-client',
     authState: 'authenticated',
     hookEvents: ['Start', 'Stop'],
+    endpoint: 'https://mcp.useorgx.com/mcp?profile=commander',
     outbox: {
       state: 'ready',
       pending: 0,
@@ -59,13 +60,51 @@ test('plugin health publishes one complete cross-client contract', async () => {
   });
 
   assert.equal(health.schema_version, 'plugin-health.v1');
+  assert.equal(health.source_client, 'test-client');
   assert.deepEqual(health.release, {
     installed: '1.2.3',
     source: '1.2.3',
     deployed: '1.2.3',
   });
   assert.equal(health.hooks.terminal_passive, true);
-  assert.equal(health.capabilities.inspectable_entities, 20);
+  assert.deepEqual(health.capabilities, {
+    profile: 'commander',
+    profile_tools: null,
+    manifest_tools: null,
+    inspectable_entities: null,
+    visible_entities: null,
+    measurement: 'not_probed',
+  });
   assert.equal(health.last_receipt_at, NOW);
 });
 
+test('plugin health publishes counts only from an explicit capability snapshot', async () => {
+  const health = await buildPluginContinuityHealth({
+    manifest: { version: '1.2.3' },
+    sourceClient: 'codex',
+    authState: 'authenticated',
+    hookEvents: [],
+    endpoint: 'https://mcp.useorgx.com/mcp?profile=commander',
+    capabilitySnapshot: {
+      profile_tools: 12,
+      manifest_tools: 37,
+      inspectable_entities: 8,
+      visible_entities: 7,
+    },
+    outbox: {
+      state: 'ready',
+      pending: 0,
+      dead_letters: 0,
+      last_replay_at: null,
+    },
+  });
+
+  assert.deepEqual(health.capabilities, {
+    profile: 'commander',
+    profile_tools: 12,
+    manifest_tools: 37,
+    inspectable_entities: 8,
+    visible_entities: 7,
+    measurement: 'measured',
+  });
+});
