@@ -38,8 +38,46 @@ jobs:
       - name: Pack
         run: mkdir -p artifacts && npm pack --pack-destination artifacts
 
+      - name: Resolve release metadata
+        id: release
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const { readFileSync } = require('node:fs');
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const manifest = JSON.parse(readFileSync('plugin.manifest.json', 'utf8'));
+          const plugin = JSON.parse(readFileSync('.codex-plugin/plugin.json', 'utf8'));
+          if (pkg.version !== manifest.version || pkg.version !== plugin.version) {
+            throw new Error(`release versions disagree: package=${pkg.version}, manifest=${manifest.version}, plugin=${plugin.version}`);
+          }
+          if (process.env.GITHUB_REF_NAME !== `v${pkg.version}`) {
+            throw new Error(`tag ${process.env.GITHUB_REF_NAME} does not match package v${pkg.version}`);
+          }
+          console.log(`name=${pkg.name}`);
+          console.log(`version=${pkg.version}`);
+          console.log(`tag=${pkg.version.includes('-') ? 'alpha' : 'latest'}`);
+          NODE
+
+      - name: Check registry
+        id: registry
+        run: |
+          if npm view "${{ steps.release.outputs.name }}@${{ steps.release.outputs.version }}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish to npm
-        run: npm publish ./artifacts/*.tgz --access public
+        if: steps.registry.outputs.already_published != 'true'
+        run: npm publish ./artifacts/*.tgz --access public --tag "${{ steps.release.outputs.tag }}"
+
+      - name: Verify registry version
+        run: |
+          for _ in {1..12}; do
+            actual="$(npm view "${{ steps.release.outputs.name }}@${{ steps.release.outputs.version }}" version 2>/dev/null || true)"
+            test "$actual" = "${{ steps.release.outputs.version }}" && exit 0
+            sleep 5
+          done
+          exit 1
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
