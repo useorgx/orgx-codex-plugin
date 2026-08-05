@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import { sanitizedChildProcessEnv } from "../lib/peer/childProcessEnv.mjs";
+
 const execFile = promisify(execFileCallback);
 
 const DEFAULT_TIMEOUT_MS = 12_000;
@@ -62,15 +64,22 @@ function commandMissing(error) {
   return error?.code === "ENOENT" || /not found/i.test(String(error?.message ?? ""));
 }
 
-async function runCommand(command, args, { timeoutMs = DEFAULT_TIMEOUT_MS, execFileImpl = execFile } = {}) {
+async function runCommand(
+  command,
+  args,
+  {
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    execFileImpl = execFile,
+    env = process.env,
+  } = {},
+) {
   try {
     const result = await execFileImpl(command, args, {
       timeout: timeoutMs,
-      env: {
-        ...process.env,
+      env: sanitizedChildProcessEnv(env, {
         NO_COLOR: "1",
         FORCE_COLOR: "0",
-      },
+      }),
     });
     return {
       ok: true,
@@ -501,6 +510,7 @@ export async function main({
   argv = process.argv.slice(2),
   fetchImpl = fetch,
   execFileImpl = execFile,
+  env = process.env,
   homeDir = homedir(),
   now = () => new Date(),
   writeOutput = true,
@@ -515,17 +525,17 @@ export async function main({
   gates.push(inspectClientHookSurfaceContract());
   gates.push(inspectCursorConfig({ homeDir }));
 
-  const cursorStatus = await runCommand("cursor-agent", ["status"], { timeoutMs, execFileImpl });
+  const commandOptions = { timeoutMs, execFileImpl, env };
+  const cursorStatus = await runCommand("cursor-agent", ["status"], commandOptions);
   gates.push(classifyCursorStatus(cursorStatus));
-  const cursorList = await runCommand("cursor-agent", ["mcp", "list"], { timeoutMs, execFileImpl });
+  const cursorList = await runCommand("cursor-agent", ["mcp", "list"], commandOptions);
   gates.push(classifyCursorList(cursorList));
   const cursorTools = await runCommand("cursor-agent", ["mcp", "list-tools", "orgx"], {
-    timeoutMs,
-    execFileImpl,
+    ...commandOptions,
   });
   gates.push(classifyCursorListTools(cursorTools));
 
-  const claudeGet = await runCommand("claude", ["mcp", "get", "orgx"], { timeoutMs, execFileImpl });
+  const claudeGet = await runCommand("claude", ["mcp", "get", "orgx"], commandOptions);
   gates.push(classifyClaudeMcpGet(claudeGet));
 
   const report = {
