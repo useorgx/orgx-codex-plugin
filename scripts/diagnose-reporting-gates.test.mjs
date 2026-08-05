@@ -158,8 +158,14 @@ test("main emits redacted reporting diagnostics", async () => {
   );
 
   const calls = [];
+  const diagnosticEnv = {
+    PATH: "/bin",
+    ORGX_API_KEY: "oxk_must_not_reach_diagnostics",
+    ORGX_GATEWAY_KEY: "oxk_legacy_must_not_reach_diagnostics",
+  };
   const report = await main({
     argv: [],
+    env: diagnosticEnv,
     homeDir,
     writeOutput: false,
     now: () => new Date("2026-06-05T15:45:00.000Z"),
@@ -168,7 +174,10 @@ test("main emits redacted reporting diagnostics", async () => {
       status: 200,
       text: async () => JSON.stringify({ tools: REQUIRED_TOOL_FIXTURE }),
     }),
-    execFileImpl: async (command, args) => {
+    execFileImpl: async (command, args, options) => {
+      assert.equal(options.env.ORGX_API_KEY, undefined);
+      assert.equal(options.env.ORGX_GATEWAY_KEY, undefined);
+      assert.equal(options.env.PATH, "/bin");
       calls.push([command, ...args].join(" "));
       if (args.join(" ") === "mcp list") {
         return { stdout: "No MCP servers configured", stderr: "" };
