@@ -50,6 +50,8 @@
     "lib/peer/autonomousTerminalEvidence.mjs",
     "lib/peer/continuityHealth.mjs",
     "lib/peer/peer.mjs",
+    "lib/peer/transportLog.mjs",
+    "lib/peer/hookSpoolReplay.mjs",
     "lib/peer/README.md",
     "lib/peer/runtimeConfig.mjs",
     "lib/peer/runnerInstanceIdentity.mjs",
@@ -63,7 +65,8 @@
   ],
   "scripts": {
     "check": "node scripts/verify-plugin.mjs",
-    "test": "node --test lib/peer/peer.test.mjs lib/peer/CodexAppServerClient.test.mjs lib/peer/CodexMcpPolicy.test.mjs lib/peer/DurableReceiptOutbox.test.mjs lib/peer/autonomousCodexExecution.test.mjs lib/peer/autonomousReadiness.test.mjs lib/peer/autonomousDispatch.test.mjs lib/peer/autonomousTerminalEvidence.test.mjs lib/peer/childProcessEnv.test.mjs lib/peer/cli.test.mjs lib/peer/runtimeConfig.test.mjs lib/peer/runnerInstanceIdentity.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-reconcile-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs scripts/diagnose-reporting-gates.test.mjs tests/continuity-health.test.mjs",
+    "test:security": "node --test lib/peer/transportLog.test.mjs lib/peer/cli.test.mjs",
+    "test": "node --test lib/peer/peer.test.mjs lib/peer/CodexAppServerClient.test.mjs lib/peer/CodexMcpPolicy.test.mjs lib/peer/DurableReceiptOutbox.test.mjs lib/peer/autonomousCodexExecution.test.mjs lib/peer/autonomousReadiness.test.mjs lib/peer/autonomousDispatch.test.mjs lib/peer/autonomousTerminalEvidence.test.mjs lib/peer/childProcessEnv.test.mjs lib/peer/cli.test.mjs lib/peer/transportLog.test.mjs lib/peer/hookSpoolReplay.test.mjs lib/peer/runtimeConfig.test.mjs lib/peer/runnerInstanceIdentity.test.mjs hooks/scripts/orgx-session-hook.test.mjs hooks/scripts/orgx-reconcile-hook.test.mjs hooks/scripts/orgx-work-graph-reconcile.test.mjs scripts/diagnose-reporting-gates.test.mjs tests/continuity-health.test.mjs",
     "prepublishOnly": "npm run check && npm test",
     "peer:start": "node lib/peer/cli.mjs"
   },
