@@ -155,6 +155,9 @@ if (orgx.url !== 'https://mcp.useorgx.com/mcp?profile=commander') {
     'mcpServers.orgx.url must target https://mcp.useorgx.com/mcp?profile=commander'
   );
 }
+if (orgx.oauth_resource !== 'https://mcp.useorgx.com/mcp') {
+  fail('mcpServers.orgx.oauth_resource must target the canonical OAuth resource');
+}
 if (!String(orgx.note ?? '').includes('operator chronicle reporting')) {
   fail('mcpServers.orgx.note must mention operator chronicle reporting');
 }
