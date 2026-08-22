@@ -300,7 +300,8 @@ The bundled `.mcp.json` config uses the hosted OrgX streamable HTTP endpoint:
   "mcpServers": {
     "orgx": {
       "type": "http",
-      "url": "https://mcp.useorgx.com/mcp?profile=commander"
+      "url": "https://mcp.useorgx.com/mcp?profile=commander",
+      "oauth_resource": "https://mcp.useorgx.com/mcp"
     }
   }
 }
