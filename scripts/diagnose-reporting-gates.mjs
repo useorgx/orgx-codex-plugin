@@ -355,7 +355,7 @@ async function inspectHostedMcp({ fetchImpl = fetch } = {}) {
   }
 }
 
-function inspectCodexHooks({ homeDir = homedir() } = {}) {
+export function inspectCodexHooks({ homeDir = homedir() } = {}) {
   const hooksPath = join(homeDir, ".codex", "hooks.json");
   if (!existsSync(hooksPath)) {
     return gate({
@@ -366,14 +366,45 @@ function inspectCodexHooks({ homeDir = homedir() } = {}) {
       nextStep: "Install the Codex hook template before treating passive reconciliation as covered.",
     });
   }
-  const text = readFileSync(hooksPath, "utf8");
-  const hasSessionHook = text.includes("orgx-session-hook.mjs");
-  const hasReconcileHook = text.includes("orgx-reconcile-hook.mjs");
+  let hooksConfig;
+  try {
+    hooksConfig = JSON.parse(readFileSync(hooksPath, "utf8"));
+  } catch {
+    return gate({
+      id: "codex_stop_reconciliation",
+      client: "codex",
+      status: "open",
+      evidence: "~/.codex/hooks.json is not valid JSON.",
+      nextStep: "Repair and reinstall the Codex hook template.",
+    });
+  }
+  const stopGroups = hooksConfig?.hooks?.Stop;
+  const canonical =
+    Array.isArray(stopGroups) &&
+    stopGroups.length > 0 &&
+    stopGroups.every(
+      (group) =>
+        group &&
+        typeof group === "object" &&
+        (group.matcher === "" || group.matcher === undefined) &&
+        Array.isArray(group.hooks) &&
+        group.hooks.length > 0 &&
+        group.hooks.every(
+          (hook) =>
+            hook &&
+            typeof hook === "object" &&
+            hook.type === "command" &&
+            typeof hook.command === "string"
+        )
+    );
+  const handlers = canonical ? stopGroups.flatMap((group) => group.hooks) : [];
+  const hasSessionHook = handlers.some((hook) => hook.command.includes("orgx-session-hook.mjs"));
+  const hasReconcileHook = handlers.some((hook) => hook.command.includes("orgx-reconcile-hook.mjs"));
   return gate({
     id: "codex_stop_reconciliation",
     client: "codex",
     status: hasSessionHook && hasReconcileHook ? "verified" : "open",
-    evidence: `~/.codex/hooks.json has session hook=${hasSessionHook}; reconcile hook=${hasReconcileHook}`,
+    evidence: `~/.codex/hooks.json canonical=${canonical}; session hook=${hasSessionHook}; reconcile hook=${hasReconcileHook}`,
     nextStep:
       hasSessionHook && hasReconcileHook
         ? "Keep passive reconciliation as a backstop, not the live report UX."
