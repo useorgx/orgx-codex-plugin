@@ -92,6 +92,16 @@ if (
   fail('defaultPrompt must include an operator chronicle reporting prompt');
 }
 if (
+  !Array.isArray(manifest.interface.defaultPrompt) ||
+  manifest.interface.defaultPrompt.length === 0 ||
+  manifest.interface.defaultPrompt.some(
+    (prompt) =>
+      typeof prompt !== 'string' || prompt.length === 0 || prompt.length > 128,
+  )
+) {
+  fail('every defaultPrompt entry must contain 1 to 128 characters');
+}
+if (
   !manifest.interface.defaultPrompt?.some(
     (prompt) =>
       prompt.includes('get_operator_chronicle') &&
