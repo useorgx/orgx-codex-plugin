@@ -323,6 +323,36 @@ for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
 if (!codexHooks.hooks || typeof codexHooks.hooks !== 'object') {
   fail('hooks/codex/hooks.json must define hooks');
 }
+
+function commandHandlers(entries, eventName) {
+  const handlers = [];
+  for (const entry of entries) {
+    if (
+      !entry ||
+      typeof entry !== 'object' ||
+      entry.matcher !== '' ||
+      !Array.isArray(entry.hooks) ||
+      entry.hooks.length === 0
+    ) {
+      fail(`${eventName} must use non-empty canonical universal matcher groups`);
+    }
+    for (const handler of entry.hooks) {
+      if (
+        !handler ||
+        typeof handler !== 'object' ||
+        handler.type !== 'command' ||
+        typeof handler.command !== 'string' ||
+        handler.command.length === 0
+      ) {
+        fail(`${eventName} must contain only typed command handlers`);
+      }
+      handlers.push(handler);
+    }
+  }
+  return handlers;
+}
+
+const hookHandlersByEvent = new Map();
 for (const eventName of [
   'SessionStart',
   'UserPromptSubmit',
@@ -335,10 +365,10 @@ for (const eventName of [
   if (!Array.isArray(entries) || entries.length === 0) {
     fail(`hooks/codex/hooks.json missing ${eventName}`);
   }
-  const hasOrgxCommand = entries.some(
+  const handlers = commandHandlers(entries, eventName);
+  hookHandlersByEvent.set(eventName, handlers);
+  const hasOrgxCommand = handlers.some(
     (entry) =>
-      entry &&
-      typeof entry.command === 'string' &&
       entry.command.includes('orgx-session-hook.mjs') &&
       entry.command.includes('--source_client=codex'),
   );
@@ -347,11 +377,18 @@ for (const eventName of [
   }
 }
 
-const stopEntries = codexHooks.hooks.Stop;
+const sessionStartEntries = hookHandlersByEvent.get('SessionStart');
+if (
+  !sessionStartEntries.some((entry) =>
+    entry.command.includes('hydrate-context-pack.mjs'),
+  )
+) {
+  fail('SessionStart must call hydrate-context-pack.mjs');
+}
+
+const stopEntries = hookHandlersByEvent.get('Stop');
 const hasStopReconciler = stopEntries.some(
   (entry) =>
-    entry &&
-    typeof entry.command === 'string' &&
     entry.command.includes('orgx-reconcile-hook.mjs') &&
     entry.command.includes('--event=Stop') &&
     entry.command.includes('--source_client=codex'),

@@ -10,6 +10,7 @@ import {
   classifyCursorListTools,
   classifyCursorStatus,
   inspectClientHookSurfaceContract,
+  inspectCodexHooks,
   inspectCursorConfig,
   main,
   stripAnsi,
@@ -130,6 +131,27 @@ test("summarizeGates gives Cursor recovery sequence", () => {
   assert.match(summary.recommendedActions[2].action, /get_operator_chronicle/);
 });
 
+test("Codex hook diagnostics reject legacy bare command entries", () => {
+  const homeDir = mkdtempSync(join(tmpdir(), "orgx-legacy-codex-hooks-"));
+  mkdirSync(join(homeDir, ".codex"), { recursive: true });
+  writeFileSync(
+    join(homeDir, ".codex", "hooks.json"),
+    JSON.stringify({
+      hooks: {
+        Stop: [
+          { command: "node orgx-session-hook.mjs" },
+          { command: "node orgx-reconcile-hook.mjs" },
+        ],
+      },
+    }),
+    "utf8"
+  );
+
+  const result = inspectCodexHooks({ homeDir });
+  assert.equal(result.status, "open");
+  assert.match(result.evidence, /canonical=false/);
+});
+
 test("main emits redacted reporting diagnostics", async () => {
   const homeDir = mkdtempSync(join(tmpdir(), "orgx-reporting-gates-"));
   mkdirSync(join(homeDir, ".codex"), { recursive: true });
@@ -141,8 +163,13 @@ test("main emits redacted reporting diagnostics", async () => {
     JSON.stringify({
       hooks: {
         Stop: [
-          { command: "node orgx-session-hook.mjs" },
-          { command: "node orgx-reconcile-hook.mjs" },
+          {
+            matcher: "",
+            hooks: [
+              { type: "command", command: "node orgx-session-hook.mjs" },
+              { type: "command", command: "node orgx-reconcile-hook.mjs" },
+            ],
+          },
         ],
       },
     }),

@@ -76,17 +76,38 @@ test("main writes the hook outbox without requiring OrgX credentials", async () 
 
 test("configured Codex Stop hook runs local Work Graph reconciliation", () => {
   const hooks = JSON.parse(readFileSync(new URL("../codex/hooks.json", import.meta.url), "utf8"));
+  const stopGroups = hooks.hooks.Stop;
+  const stopHandlers = stopGroups.flatMap((group) => group.hooks ?? []);
 
   assert.ok(
-    hooks.hooks.Stop.some((hook) =>
+    stopHandlers.some((hook) =>
       hook.command.includes("hooks/scripts/orgx-session-hook.mjs")
     ),
     "Stop should persist a compact hook outbox record"
   );
   assert.ok(
-    hooks.hooks.Stop.some((hook) =>
+    stopHandlers.some((hook) =>
       hook.command.includes("hooks/scripts/orgx-reconcile-hook.mjs")
     ),
     "Stop should run local Work Graph reconciliation"
   );
+});
+
+test("configured Codex hooks use canonical matcher groups and typed handlers", () => {
+  const config = JSON.parse(
+    readFileSync(new URL("../codex/hooks.json", import.meta.url), "utf8")
+  );
+
+  for (const [eventName, groups] of Object.entries(config.hooks)) {
+    assert.ok(groups.length > 0, `${eventName} should define at least one matcher group`);
+    for (const group of groups) {
+      assert.equal(group.matcher, "", `${eventName} should use the universal matcher`);
+      assert.ok(group.hooks.length > 0, `${eventName} should define command handlers`);
+      for (const hook of group.hooks) {
+        assert.equal(hook.type, "command");
+        assert.equal(typeof hook.command, "string");
+        assert.ok(hook.command.length > 0);
+      }
+    }
+  }
 });
