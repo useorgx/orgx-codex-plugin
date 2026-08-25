@@ -74,28 +74,24 @@ test("main writes the hook outbox without requiring OrgX credentials", async () 
   assert.equal(record.cwd, "/repo");
 });
 
-test("configured Codex Stop hook runs local Work Graph reconciliation", () => {
-  const hooks = JSON.parse(readFileSync(new URL("../codex/hooks.json", import.meta.url), "utf8"));
-  const stopGroups = hooks.hooks.Stop;
-  const stopHandlers = stopGroups.flatMap((group) => group.hooks ?? []);
+test("plugin hooks leave collection and reconciliation exclusively to Wizard", () => {
+  const hooks = JSON.parse(readFileSync(new URL("../hooks.json", import.meta.url), "utf8"));
+  const commands = Object.values(hooks.hooks)
+    .flatMap((groups) => groups)
+    .flatMap((group) => group.hooks ?? [])
+    .map((hook) => hook.command);
 
-  assert.ok(
-    stopHandlers.some((hook) =>
-      hook.command.includes("hooks/scripts/orgx-session-hook.mjs")
-    ),
-    "Stop should persist a compact hook outbox record"
-  );
-  assert.ok(
-    stopHandlers.some((hook) =>
-      hook.command.includes("hooks/scripts/orgx-reconcile-hook.mjs")
-    ),
-    "Stop should run local Work Graph reconciliation"
+  assert.equal(commands.some((command) => command.includes("orgx-session-hook.mjs")), false);
+  assert.equal(commands.some((command) => command.includes("orgx-reconcile-hook.mjs")), false);
+  assert.equal(
+    commands.some((command) => command.includes("hydrate-context-pack.mjs")),
+    true
   );
 });
 
-test("configured Codex hooks use canonical matcher groups and typed handlers", () => {
+test("configured Codex SessionStart hook uses canonical typed handlers", () => {
   const config = JSON.parse(
-    readFileSync(new URL("../codex/hooks.json", import.meta.url), "utf8")
+    readFileSync(new URL("../hooks.json", import.meta.url), "utf8")
   );
 
   for (const [eventName, groups] of Object.entries(config.hooks)) {

@@ -1,0 +1,19 @@
+{
+  "description": "Hydrate accepted OrgX context into the first Codex turn; Wizard owns all session capture.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/scripts/hydrate-context-pack.mjs\"",
+            "timeout": 8,
+            "statusMessage": "Loading accepted OrgX context",
+            "additionalContextLimit": 2048
+          }
+        ]
+      }
+    ]
+  }
+}
