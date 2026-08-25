@@ -8,12 +8,12 @@ skills actually tap the hooks and tool surfaces exposed by each AI client.
 Coverage is not sufficient yet for the full operator experience.
 
 The Codex plugin covers Codex MCP installation, OrgX skills, stale-client
-chronicle fallback, passive hook templates, and Work Graph reconciliation. As of
-2026-06-05, the local Codex `Stop` hook is also installed to run
-summary-only Work Graph reconciliation after the hook outbox write. That proves
-Codex can produce the latest local report without a manual reconciler command,
-but it still does not prove direct `get_operator_chronicle` exposure in every
-active Codex session.
+chronicle fallback, native `SessionStart` context injection, and a manual Work
+Graph reconciler. Session collection is deliberately not duplicated in the
+plugin: explicit `orgx-codex-install-hooks` setup delegates lifecycle capture,
+consent policy, queueing, acknowledgement, retry, and delivery to Wizard. Source
+verification does not by itself prove the newly packed plugin has run inside a
+fresh installed Codex session.
 
 This Codex package still does not package first-class ChatGPT or Cursor
 hook/config artifacts. Claude Code is covered by the separate
@@ -60,9 +60,10 @@ There are three viable reporting paths, but they are not equivalent:
 Client hook coverage is therefore judged by whether the plugin taps the hooks
 that the client actually exposes:
 
-- Codex: taps local lifecycle hooks, especially `Stop`, and now reconciles
-  summary-only Work Graph evidence. Direct chronicle readout is still gated on
-  active-session tool exposure.
+- Codex: the plugin taps native `SessionStart` only for first-turn hydration.
+  Wizard owns later lifecycle capture, including `Stop`, and its summary-only
+  Work Graph evidence. Direct chronicle readout is still gated on active-session
+  tool exposure.
 - ChatGPT: has no local lifecycle hook in this package. The correct surface is
   hosted MCP / Apps SDK tool discovery plus app action controls and widgets.
 - Claude Code: taps lifecycle hooks through the separate Claude plugin and has
@@ -83,7 +84,7 @@ actually tapped the strongest native hook/action surface this client exposes."
 
 | Client | Current OrgX surface | Hook/support level | Chronicle route | Missing for seamless UX |
 | --- | --- | --- | --- | --- |
-| Codex | `orgx-codex-plugin` bundles `.mcp.json`, skills, local marketplace metadata, passive hook templates, peer sidecar, and Work Graph reconciler. | Installed local hook coverage is now proven for `Stop`: `~/.codex/hooks.json` writes the OrgX outbox, runs `orgx-reconcile-hook.mjs`, and preserves the existing notify hook. Package tests also cover `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, and `Stop`. Current Codex sessions may still expose only compatibility app tools. | Preferred: `get_operator_chronicle`. Fallback: `_orgx_recommend` / `orgx_recommend` with `mode: "morning_brief"`. | Prove direct callable exposure after plugin refresh. Add client-side evidence when bootstrap advertises `get_operator_chronicle` but the active tool list omits it. |
+| Codex | `orgx-codex-plugin` bundles `.mcp.json`, skills, a canonical `hooks/hooks.json` SessionStart adapter, peer sidecar, and Work Graph reconciler. | The plugin injects bounded `additionalContext` and forwards `data.sessionWorkContext` unchanged to Wizard for exact-cwd activation. Wizard alone owns later lifecycle capture. Plugin-initiated setup defaults to metadata-only unless `ORGX_SESSION_WORK_EPISODE_CAPTURE=bounded` is explicit. | Preferred: `get_operator_chronicle`. Fallback: `_orgx_recommend` / `orgx_recommend` with `mode: "morning_brief"`. | Isolated fresh-install proof passes. Wizard source compatibility for the current app `cost.availability` union merged in Wizard PR #105; a release containing that change and a production/global install remain unproven. |
 | ChatGPT | Hosted OrgX MCP / Apps SDK app through `https://mcp.useorgx.com/mcp`; widgets and tool descriptors live in the MCP server, not this Codex plugin. Live `server.json` exposes 29 tools including `get_operator_chronicle`. | No local lifecycle hook channel in this package. ChatGPT relies on app tool scanning, app approval, action controls, and widget resources. | Preferred: ChatGPT app tool `get_operator_chronicle` after Scan Tools / Refresh. Fallback: app tool `orgx_recommend` with `mode: "morning_brief"` if the scan is stale. | Verify the ChatGPT draft/published app action list includes the new direct tool. Current UI proof is blocked: Chrome is not logged into ChatGPT, native ChatGPT app inspection is unavailable to Codex, and the logged-in Arc browser state is unsafe for automation until an unrelated LinkedIn edit modal is cleared. |
 | Claude Code | Separate Claude Code config/plugin path is required. Claude Code supports lifecycle hooks and MCP tool hooks, but this package only ships Codex hook JSON. | Separate `orgx-claude-code-plugin` install is verified at `0.1.3`: it emits reporting events on `SessionStart`, `PostToolUse`, `SubagentStop`, and `Stop`, then runs non-blocking local Work Graph reconciliation on Claude `Stop`. Claude Code `2.1.165` now has the user-scoped local `orgx` MCP entry connected and a fresh noninteractive direct readout succeeded through `mcp__orgx__get_operator_chronicle`. | Preferred: Claude MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. | Keep monitoring hook reliability: one `claude mcp get orgx` run reported a cancelled `SessionEnd` hook even while MCP auth was connected. |
 | Cursor | Hosted OrgX MCP is configured in `~/.cursor/mcp.json`, and repo-local Cursor overlay files exist under `.cursor/orgx`, `.cursor/rules`, and `.cursor/commands`. PR #1732 added `OrgX: Morning Brief` to the repo-local overlay. | Direct MCP tool surface is viable but auth is volatile. On 2026-06-05, `cursor-agent mcp list-tools orgx` first required OAuth; after `cursor-agent mcp login orgx`, it returned 29 tools including direct `get_operator_chronicle`. Later the same day, a fresh check required `cursor-agent mcp login orgx` again. Cursor exposes MCP tools and rules/commands, not a matching passive lifecycle hook package here. | Preferred: Cursor MCP tool `get_operator_chronicle`. Fallback: `orgx_recommend` with `mode: "morning_brief"`. Repo command: `OrgX: Morning Brief`. | Resolve the CLI inconsistency where `cursor-agent mcp list` reports no configured servers while `cursor-agent mcp list-tools orgx` can still succeed, and make OAuth/session persistence durable enough that the user does not have to re-login for reporting clarity. |
@@ -110,6 +111,20 @@ current evidence:
 ## Current Evidence Snapshot
 
 Last checked: 2026-06-05 10:50 America/Chicago.
+
+- Context activation slice checked 2026-08-24 22:00 America/Chicago. Codex CLI
+  `0.147.0` installed this source into a fresh isolated plugin cache. Its native
+  `SessionStart` adapter called a loopback `/api/v1/context-pack` with the exact
+  workspace, initiative, workstream, and task IDs. A loopback Responses provider
+  then observed both the OrgX context marker and the user marker in every first
+  model request. The project pack was mode `0600`, and Wizard inspection was
+  `ready` for the exact project cwd. This is isolated installed-client proof,
+  not a global or production install.
+- The current installed Wizard `0.1.69` still rejects the app's strict
+  `cost: { availability: "not_observed" }` branch. The plugin preserves that
+  exact object as pending instead of rewriting it. Source compatibility merged
+  in Wizard PR #105; the remaining gap is releasing and installing a Wizard
+  version that contains it, then repeating the installed-client canary.
 
 - Live `https://mcp.useorgx.com/server.json` returned status `200` with 29
   tools, including `get_operator_chronicle` and `orgx_recommend`.
@@ -138,17 +153,20 @@ Last checked: 2026-06-05 10:50 America/Chicago.
   `cursor-agent login`, then `cursor-agent mcp list`, then
   `cursor-agent mcp login orgx` if `list-tools orgx` still fails to expose
   `get_operator_chronicle`.
-- `~/.codex/hooks.json` has a Codex `Stop` sequence with the OrgX session hook,
-  the OrgX reconcile hook, and the existing notify hook.
+- The previously installed `~/.codex/hooks.json` may still contain older Wizard
+  handlers. Re-run `orgx-codex-install-hooks` after a Wizard release containing
+  PR #105 rather than treating merged source as installed state.
 - Running the installed Stop reconcile command wrote
   `~/.config/useorgx/wizard/hooks/reports/latest-work-graph-report.json` with
   `generated_at: "2026-06-05T14:00:18.983Z"`, `records_read: 5000`,
   `raw_transcripts_sent: false`, `redaction_level: "summary_only"`,
   `work_graph_fingerprint: wgf_928a73d6ddb93f28527167da`, and source coverage
   for Claude Code, Codex, OpenClaw, and opencode.
-- The local plugin source and cache are both at `0.1.5` and include
-  `hooks/scripts/orgx-reconcile-hook.mjs`.
-- `npm run check` and `npm test` pass from the installed Codex plugin source.
+- Historical local plugin/cache version and Stop-reconcile receipts remain
+  historical evidence; they do not prove this source revision is installed.
+- `npm run check`, `npm test`, the opt-in real-Wizard integration test, an npm
+  package install, and the isolated native first-turn canary passed for this
+  source revision. Global install and production proof remain separate.
 - Claude Code PR #14
   (`https://github.com/useorgx/orgx-claude-code-plugin/pull/14`) merged
   Stop-hook reconciliation. Installed wizard source and Claude cache paths at

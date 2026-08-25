@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "lastCheckedAt": "2026-06-05T10:50:00-05:00",
+  "lastCheckedAt": "2026-08-24T22:00:47-05:00",
   "purpose": "Machine-readable gates for the OrgX operator chronicle plugin UX.",
   "requiredReadoutFields": [
     "reportingNarrative.briefMarkdown",
@@ -43,13 +43,13 @@
   "clientHookSurfaces": [
     {
       "client": "codex",
-      "bestAvailableSurface": "MCP tool list plus Codex lifecycle hooks",
+      "bestAvailableSurface": "MCP tool list, native SessionStart context injection, and Wizard-owned lifecycle capture",
       "directReadoutPath": "get_operator_chronicle when the active callable namespace exposes it",
       "fallbackPath": "_orgx_recommend or orgx_recommend with mode=\"morning_brief\" when the session only exposes stale wrapper tools",
-      "passiveHookSupport": "SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PermissionRequest, and Stop hooks via hooks/codex/hooks.json",
-      "nativeHookCoverageStatus": "verified_for_passive_reconciliation",
+      "passiveHookSupport": "The plugin owns only hooks/hooks.json SessionStart hydration. Explicit orgx-codex-install-hooks delegates SessionStart, UserPromptSubmit, PostToolUse, and Stop capture, policy, queueing, and delivery to Wizard.",
+      "nativeHookCoverageStatus": "verified_in_isolated_install",
       "sufficiency": "partial",
-      "currentGap": "Direct get_operator_chronicle exposure is still open in this active Codex session, so passive Stop hooks and the morning-brief fallback are not enough to claim seamless live reporting."
+      "currentGap": "A fresh isolated Codex 0.147.0 install proved model-visible first-turn context and exact-cwd Wizard activation for a compatible context. Wizard source compatibility for the app's cost availability not_observed branch merged in PR #105, but a containing Wizard release and global production install remain open; installed 0.1.69 still rejects it."
     },
     {
       "client": "chatgpt",
@@ -124,11 +124,19 @@
       "nextStep": "Keep the default prompt and skills routing users to this fallback until direct tool exposure is proven."
     },
     {
+      "id": "codex_first_turn_context",
+      "client": "codex",
+      "status": "verified_in_isolated_install",
+      "route": "native_session_start_context",
+      "evidence": "Codex CLI 0.147.0 installed this source in an isolated HOME and CODEX_HOME. The native SessionStart hook requested the exact workspace, initiative, workstream, and task hierarchy; a loopback Responses provider observed both the OrgX marker and the user marker in every first model request; the pack was mode 0600; and Wizard reported ready for the exact project cwd.",
+      "nextStep": "Release and install a Wizard version containing PR #105, install this plugin globally, then repeat with the app's exact not_observed cost union before claiming production proof."
+    },
+    {
       "id": "codex_stop_reconciliation",
       "client": "codex",
       "status": "verified",
       "route": "passive_hook_reconciliation",
-      "evidence": "Installed Stop hook writes summary-only Work Graph reports with raw_transcripts_sent=false and work_graph_fingerprint present.",
+      "evidence": "The previously installed Wizard-owned Stop hook wrote summary-only Work Graph reports with raw_transcripts_sent=false and work_graph_fingerprint present. This is historical installed-state evidence, not proof that this source revision is installed.",
       "nextStep": "Keep hook reconciliation non-blocking and treat it as evidence capture, not the live report UX."
     },
     {

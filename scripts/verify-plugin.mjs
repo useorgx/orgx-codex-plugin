@@ -11,9 +11,13 @@ const mcpPath = resolve(root, '.mcp.json');
 const marketplacePath = resolve(root, '.agents', 'plugins', 'marketplace.json');
 const clientHookCoveragePath = resolve(root, 'docs', 'client-hook-coverage.md');
 const operatorReportingGatesPath = resolve(root, 'docs', 'operator-reporting-gates.json');
-const codexHooksPath = resolve(root, 'hooks', 'codex', 'hooks.json');
-const hookScriptPath = resolve(root, 'hooks', 'scripts', 'orgx-session-hook.mjs');
-const stopReconcileHookPath = resolve(root, 'hooks', 'scripts', 'orgx-reconcile-hook.mjs');
+const codexHooksPath = resolve(root, 'hooks', 'hooks.json');
+const contextHydrationPath = resolve(
+  root,
+  'hooks',
+  'scripts',
+  'hydrate-context-pack.mjs',
+);
 const hookReconcilerPath = resolve(
   root,
   'hooks',
@@ -21,6 +25,7 @@ const hookReconcilerPath = resolve(
   'orgx-work-graph-reconcile.mjs',
 );
 const reportingGateDiagnosticsPath = resolve(root, 'scripts', 'diagnose-reporting-gates.mjs');
+const hookInstallerPath = resolve(root, 'scripts', 'install-codex-hooks.mjs');
 
 function fail(message) {
   console.error(`verify-plugin: ${message}`);
@@ -38,13 +43,15 @@ if (!existsSync(mcpPath)) fail('missing .mcp.json');
 if (!existsSync(marketplacePath)) fail('missing .agents/plugins/marketplace.json');
 if (!existsSync(clientHookCoveragePath)) fail('missing docs/client-hook-coverage.md');
 if (!existsSync(operatorReportingGatesPath)) fail('missing docs/operator-reporting-gates.json');
-if (!existsSync(codexHooksPath)) fail('missing hooks/codex/hooks.json');
-if (!existsSync(hookScriptPath)) fail('missing hooks/scripts/orgx-session-hook.mjs');
-if (!existsSync(stopReconcileHookPath)) fail('missing hooks/scripts/orgx-reconcile-hook.mjs');
+if (!existsSync(codexHooksPath)) fail('missing hooks/hooks.json');
+if (!existsSync(contextHydrationPath)) {
+  fail('missing hooks/scripts/hydrate-context-pack.mjs');
+}
 if (!existsSync(hookReconcilerPath)) {
   fail('missing hooks/scripts/orgx-work-graph-reconcile.mjs');
 }
 if (!existsSync(reportingGateDiagnosticsPath)) fail('missing scripts/diagnose-reporting-gates.mjs');
+if (!existsSync(hookInstallerPath)) fail('missing scripts/install-codex-hooks.mjs');
 
 const pkg = readJson(packagePath);
 const peerManifest = readJson(peerManifestPath);
@@ -282,6 +289,7 @@ for (const expected of [
   'client_hook_surface_contract',
   'codex_direct_tool_exposure',
   'codex_morning_brief_fallback',
+  'codex_first_turn_context',
   'codex_stop_reconciliation',
   'chatgpt_action_list',
   'claude_direct_readout',
@@ -331,7 +339,7 @@ for (const skillName of ['orgx-initiative-ops', 'orgx-runtime-reporting']) {
 }
 
 if (!codexHooks.hooks || typeof codexHooks.hooks !== 'object') {
-  fail('hooks/codex/hooks.json must define hooks');
+  fail('hooks/hooks.json must define hooks');
 }
 
 function commandHandlers(entries, eventName) {
@@ -362,72 +370,61 @@ function commandHandlers(entries, eventName) {
   return handlers;
 }
 
-const hookHandlersByEvent = new Map();
-for (const eventName of [
+const hookEvents = Object.keys(codexHooks.hooks);
+if (hookEvents.length !== 1 || hookEvents[0] !== 'SessionStart') {
+  fail('plugin hooks must hydrate SessionStart only; Wizard owns all session capture');
+}
+
+const sessionStartEntries = commandHandlers(
+  codexHooks.hooks.SessionStart,
   'SessionStart',
-  'UserPromptSubmit',
-  'PreToolUse',
-  'PostToolUse',
-  'PermissionRequest',
-  'Stop',
-]) {
-  const entries = codexHooks.hooks[eventName];
-  if (!Array.isArray(entries) || entries.length === 0) {
-    fail(`hooks/codex/hooks.json missing ${eventName}`);
-  }
-  const handlers = commandHandlers(entries, eventName);
-  hookHandlersByEvent.set(eventName, handlers);
-  const hasOrgxCommand = handlers.some(
-    (entry) =>
-      entry.command.includes('orgx-session-hook.mjs') &&
-      entry.command.includes('--source_client=codex'),
-  );
-  if (!hasOrgxCommand) {
-    fail(`${eventName} must call orgx-session-hook.mjs with source_client=codex`);
-  }
-}
-
-const sessionStartEntries = hookHandlersByEvent.get('SessionStart');
-if (
-  !sessionStartEntries.some((entry) =>
-    entry.command.includes('hydrate-context-pack.mjs'),
-  )
-) {
-  fail('SessionStart must call hydrate-context-pack.mjs');
-}
-
-const stopEntries = hookHandlersByEvent.get('Stop');
-const hasStopReconciler = stopEntries.some(
-  (entry) =>
-    entry.command.includes('orgx-reconcile-hook.mjs') &&
-    entry.command.includes('--event=Stop') &&
-    entry.command.includes('--source_client=codex'),
 );
-if (!hasStopReconciler) {
-  fail('Stop must call orgx-reconcile-hook.mjs with source_client=codex');
+if (sessionStartEntries.length !== 1) {
+  fail('SessionStart must contain exactly one context hydration handler');
+}
+const [sessionStart] = sessionStartEntries;
+if (
+  !sessionStart.command.includes('${PLUGIN_ROOT}') ||
+  !sessionStart.command.includes('hydrate-context-pack.mjs')
+) {
+  fail('SessionStart must call the plugin-root context hydrator');
+}
+if (
+  !Number.isInteger(sessionStart.timeout) ||
+  sessionStart.timeout < 1 ||
+  sessionStart.timeout > 8
+) {
+  fail('SessionStart context hydration timeout must be between 1 and 8 seconds');
+}
+if (
+  !Number.isInteger(sessionStart.additionalContextLimit) ||
+  sessionStart.additionalContextLimit < 1 ||
+  sessionStart.additionalContextLimit > 2048
+) {
+  fail('SessionStart additionalContextLimit must be between 1 and 2048 tokens');
 }
 
-const hookScript = readFileSync(hookScriptPath, 'utf8');
-if (!hookScript.includes('orgx_codex_plugin_runtime_hook')) {
-  fail('hook script must emit orgx_codex_plugin_runtime_hook records');
-}
-if (hookScript.includes('appendFileSync(outbox, raw')) {
-  fail('hook script must not persist raw hook payloads');
-}
-
-const stopReconcileHook = readFileSync(stopReconcileHookPath, 'utf8');
+const contextHydration = readFileSync(contextHydrationPath, 'utf8');
 for (const expected of [
-  'latest-work-graph-report.json',
-  'ORGX_HOOK_RECONCILE_POST',
-  'ORGX_WIZARD_HOOK_RECONCILE_POST',
-  'process.exit(0)',
+  '/api/v1/context-pack',
+  'ORGX_WORKSPACE_ID',
+  'ORGX_INITIATIVE_ID',
+  'ORGX_WORKSTREAM_ID',
+  'ORGX_TASK_ID',
+  'data.sessionWorkContext',
+  'sessions',
+  'context',
+  'set',
+  'buildCodexSessionStartOutput',
+  'MAX_CONTEXT_PACK_RESPONSE_BYTES',
+  'PENDING_CONTEXT_FILENAME',
 ]) {
-  if (!stopReconcileHook.includes(expected)) {
-    fail(`Stop reconcile hook must include ${expected}`);
+  if (!contextHydration.includes(expected)) {
+    fail(`context hydration must include ${expected}`);
   }
 }
-if (stopReconcileHook.includes('process.exit(1)')) {
-  fail('Stop reconcile hook must never fail the client session');
+if (/localConfig\?\.(?:apiKey|api_key)/.test(contextHydration)) {
+  fail('context hydration must never load credentials from project config');
 }
 
 const hookReconciler = readFileSync(hookReconcilerPath, 'utf8');
@@ -450,6 +447,20 @@ if (
 }
 if (pkg.bin['orgx-codex-diagnose-reporting'] !== 'scripts/diagnose-reporting-gates.mjs') {
   fail('package bin must expose orgx-codex-diagnose-reporting');
+}
+if (pkg.bin['orgx-codex-install-hooks'] !== 'scripts/install-codex-hooks.mjs') {
+  fail('package bin must expose orgx-codex-install-hooks');
+}
+const hookInstaller = readFileSync(hookInstallerPath, 'utf8');
+for (const expected of [
+  'ORGX_SESSION_WORK_EPISODE_CAPTURE',
+  'metadata-only',
+  '--work-capture',
+  'credentialFreeInstallEnvironment',
+]) {
+  if (!hookInstaller.includes(expected)) {
+    fail(`hook installer must include ${expected}`);
+  }
 }
 const reportingGateDiagnostics = readFileSync(reportingGateDiagnosticsPath, 'utf8');
 for (const expected of [
@@ -475,22 +486,29 @@ if (!Array.isArray(pkg.files)) {
 }
 for (const expectedPath of [
   '.codex-plugin/',
-  'hooks/codex/',
-  'hooks/scripts/orgx-reconcile-hook.mjs',
-  'hooks/scripts/orgx-session-hook.mjs',
+  'hooks/hooks.json',
+  'hooks/scripts/hydrate-context-pack.mjs',
   'hooks/scripts/orgx-work-graph-reconcile.mjs',
   'docs/client-hook-coverage.md',
   'docs/operator-reporting-gates.json',
   'lib/peer/peer.mjs',
   'lib/peer/runnerInstanceIdentity.mjs',
   'scripts/diagnose-reporting-gates.mjs',
+  'scripts/install-codex-hooks.mjs',
   'skills/',
 ]) {
   if (!pkg.files.includes(expectedPath)) {
     fail(`package files allowlist missing ${expectedPath}`);
   }
 }
-for (const forbiddenPath of ['.codex/', 'AGENTS.md', 'hooks/scripts/orgx-session-hook.test.mjs']) {
+for (const forbiddenPath of [
+  '.codex/',
+  'AGENTS.md',
+  'hooks/codex/',
+  'hooks/scripts/orgx-session-hook.mjs',
+  'hooks/scripts/orgx-reconcile-hook.mjs',
+  'hooks/scripts/orgx-session-hook.test.mjs',
+]) {
   if (pkg.files.includes(forbiddenPath)) {
     fail(`package files allowlist must not include local/test artifact ${forbiddenPath}`);
   }
