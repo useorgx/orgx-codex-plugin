@@ -62,6 +62,20 @@ const codexHooks = readJson(codexHooksPath);
 const operatorReportingGates = readJson(operatorReportingGatesPath);
 const clientHookCoverage = readFileSync(clientHookCoveragePath, 'utf8');
 
+for (const section of ['dependencies', 'optionalDependencies']) {
+  for (const [name, specifier] of Object.entries(pkg[section] ?? {})) {
+    if (
+      /^(?:git(?:\+[^:]+)?:|github:|gitlab:|bitbucket:|git@)/i.test(
+        String(specifier),
+      )
+    ) {
+      fail(
+        `package.json ${section}.${name} must use a registry version, not a Git dependency`,
+      );
+    }
+  }
+}
+
 if (!manifest.name || typeof manifest.name !== 'string') {
   fail('manifest.name must be a non-empty string');
 }
