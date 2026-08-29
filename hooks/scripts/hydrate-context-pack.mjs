@@ -151,6 +151,28 @@ export function resolveProjectDirectory(payload = {}, env = {}, explicit) {
   return candidate && isAbsolute(candidate) ? resolve(candidate) : undefined;
 }
 
+export function canonicalExistingDirectory(
+  path,
+  realpathSyncImpl = realpathSync
+) {
+  if (!path) return undefined;
+  try {
+    return realpathSyncImpl(resolve(path));
+  } catch {
+    return undefined;
+  }
+}
+
+export function pathsReferToSameDirectory(
+  left,
+  right,
+  realpathSyncImpl = realpathSync
+) {
+  const canonicalLeft = canonicalExistingDirectory(left, realpathSyncImpl);
+  const canonicalRight = canonicalExistingDirectory(right, realpathSyncImpl);
+  return Boolean(canonicalLeft && canonicalRight && canonicalLeft === canonicalRight);
+}
+
 export function readLocalConfig(projectDir) {
   const path = join(projectDir, ...LOCAL_CONFIG_PATH);
   if (!existsSync(path)) return null;
@@ -359,7 +381,7 @@ function parseWizardAcknowledgement(stdout, projectDir) {
     if (!isRecord(value) || value.ready !== true || value.state !== "ready") {
       return { activated: false, reason: "wizard_unverified" };
     }
-    if (resolve(value.cwd) !== resolve(projectDir)) {
+    if (!pathsReferToSameDirectory(value.cwd, projectDir)) {
       return { activated: false, reason: "wizard_cwd_mismatch" };
     }
     return { activated: true, reason: "wizard_activated" };
@@ -374,7 +396,7 @@ function parseWizardClearAcknowledgement(stdout, projectDir) {
     if (!isRecord(value) || value.ready !== false || value.state !== "missing") {
       return { cleared: false, reason: "wizard_unverified" };
     }
-    if (resolve(value.cwd) !== resolve(projectDir)) {
+    if (!pathsReferToSameDirectory(value.cwd, projectDir)) {
       return { cleared: false, reason: "wizard_cwd_mismatch" };
     }
     return {
