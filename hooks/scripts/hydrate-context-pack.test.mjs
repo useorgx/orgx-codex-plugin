@@ -24,6 +24,7 @@ import {
   buildCodexSessionStartOutput,
   buildPackRequest,
   clearSessionWorkContext,
+  pathsReferToSameDirectory,
   credentialFreeWizardEnvironment,
   isDirectRun,
   main,
@@ -71,7 +72,7 @@ function response(data, status = 200) {
   };
 }
 
-function successfulWizard(calls) {
+function successfulWizard(calls, reportedCwd) {
   return (command, args, options) => {
     const child = new EventEmitter();
     const chunks = [];
@@ -89,7 +90,7 @@ function successfulWizard(calls) {
         options,
         input: Buffer.concat(chunks).toString("utf8"),
       });
-      const cwd = args[args.indexOf("--cwd") + 1];
+      const cwd = reportedCwd ?? args[args.indexOf("--cwd") + 1];
       child.stdout.end(JSON.stringify(
         args[2] === "clear"
           ? { cleared: true, state: "missing", ready: false, cwd }
@@ -507,6 +508,64 @@ test("detects direct execution across filesystem path aliases", () => {
     }),
     true
   );
+});
+
+test("accepts canonical-equivalent project directory aliases", () => {
+  const canonicalize = (path) => path.replace(/^\/tmp\//, "/private/tmp/");
+  assert.equal(
+    pathsReferToSameDirectory(
+      "/tmp/orgx/project",
+      "/private/tmp/orgx/project",
+      canonicalize
+    ),
+    true
+  );
+  assert.equal(
+    pathsReferToSameDirectory(
+      "/tmp/orgx/project",
+      "/private/tmp/orgx/other",
+      canonicalize
+    ),
+    false
+  );
+});
+
+test("activates when Wizard reports a canonical-equivalent cwd alias", async () => {
+  const root = mkdtempSync(join(tmpdir(), "orgx-codex-context-alias-"));
+  const canonicalProjectDir = join(root, "canonical-project");
+  const aliasedProjectDir = join(root, "aliased-project");
+  mkdirSync(canonicalProjectDir);
+  symlinkSync(canonicalProjectDir, aliasedProjectDir);
+  try {
+    assert.deepEqual(
+      await activateSessionWorkContext({
+        context: sessionWorkContext,
+        projectDir: aliasedProjectDir,
+        spawnImpl: successfulWizard([], canonicalProjectDir),
+      }),
+      { activated: true, reason: "wizard_activated" }
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("preserves wizard_cwd_mismatch for a different canonical directory", async () => {
+  const projectDir = mkdtempSync(join(tmpdir(), "orgx-codex-context-cwd-"));
+  const otherDir = mkdtempSync(join(tmpdir(), "orgx-codex-context-other-"));
+  try {
+    assert.deepEqual(
+      await activateSessionWorkContext({
+        context: sessionWorkContext,
+        projectDir,
+        spawnImpl: successfulWizard([], otherDir),
+      }),
+      { activated: false, reason: "wizard_cwd_mismatch" }
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+    rmSync(otherDir, { recursive: true, force: true });
+  }
 });
 
 test("atomically replaces a context-pack symlink without overwriting its target", async () => {
