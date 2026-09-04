@@ -96,6 +96,14 @@ only on 2xx; a server rejection or process restart leaves it queued for replay.
 The default is under `~/.orgx/codex-peer/receipt-outbox/`; operators can set
 `ORGX_RECEIPT_OUTBOX_PATH` to a durable service-owned directory.
 
+Hook events use a separate shared spool. The peer replays it on startup and
+every five minutes, advancing a byte cursor only after an accepted upload.
+Incomplete lines wait for their writer; malformed records block that batch and
+remain on disk for diagnosis. Health reads that same cursor and marks capped
+pending counts as lower bounds. Work Graph upload time does not establish an
+execution receipt. Automatic truncation is disabled because hook writers do not
+share a rotation lock; reclaim disk only while those writers are stopped.
+
 Before writing the autonomous setting, an installer can run:
 
 ```bash
