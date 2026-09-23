@@ -13,6 +13,11 @@ import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 
 import { maybeEmitExecutionGraph } from "./emit-execution-graph.mjs";
+import {
+  deliveryAckHeaders,
+  payloadDigest,
+  settleOnAck,
+} from "../../lib/peer/deliveryAck.mjs";
 
 const WORK_GRAPH_SCHEMA_VERSION = "2.0.0";
 const WORK_GRAPH_FINGERPRINT_VERSION = "wgf_v1";
@@ -888,34 +893,55 @@ export function buildWorkGraphReport(recordsInput, options = {}) {
   };
 }
 
+/**
+ * @param {object} options
+ * @param {boolean} [options.requireAck] When true (the spool replay), resolve
+ *   only on a digest-bound delivery ACK for exactly these bytes, so a bare 2xx
+ *   cannot advance the durable replay cursor past unpersisted records.
+ */
 export async function postWorkGraphReport({
   report,
   baseUrl,
   apiKey,
   fetchImpl = fetch,
+  requireAck = false,
 }) {
   const normalizedBaseUrl = pickString(baseUrl, "https://www.useorgx.com").replace(/\/+$/, "");
   const token = pickString(apiKey);
   if (!token) {
     throw new Error("ORGX_API_KEY is required when posting a Work Graph report");
   }
+  const bodyText = JSON.stringify({
+    report,
+    public_share: false,
+    attach_artifact: false,
+  });
+  // One report body is one operation: its digest is a stable idempotency key.
+  const operationId = `work-graph-report:${payloadDigest(bodyText).slice(7, 39)}`;
   const response = await fetchImpl(`${normalizedBaseUrl}/api/client/work-graph/reports`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      ...deliveryAckHeaders(operationId, bodyText),
     },
-    body: JSON.stringify({
-      report,
-      public_share: false,
-      attach_artifact: false,
-    }),
+    body: bodyText,
   });
   const body = await response.json().catch(async () => ({
     text: await response.text().catch(() => ""),
   }));
   if (!response.ok) {
     throw new Error(`Work Graph report post failed with HTTP ${response.status}`);
+  }
+  if (requireAck) {
+    const settlement = settleOnAck(operationId, payloadDigest(bodyText), {
+      ok: response.ok,
+      status: response.status,
+      body,
+    });
+    if (!settlement.settled) {
+      throw new Error(`Work Graph report not acknowledged: ${settlement.reason}`);
+    }
   }
   return body;
 }
