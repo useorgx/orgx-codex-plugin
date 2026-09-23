@@ -24,6 +24,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - name: Stamp manifest fingerprint from the packed file set
+        run: node scripts/stamp-manifest.mjs
+        env:
+          ORGX_MANIFEST_SIGNING_KEY: ${{ secrets.ORGX_MANIFEST_SIGNING_KEY }}
       - run: mkdir -p artifacts && npm pack --pack-destination artifacts
       - uses: actions/upload-artifact@v4
         with:

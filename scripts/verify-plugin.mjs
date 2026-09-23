@@ -515,6 +515,27 @@ for (const expectedPath of [
     fail(`package files allowlist missing ${expectedPath}`);
   }
 }
+// Every relative import from a packed module must itself be packed. A new
+// sibling module that is imported but missing from the explicit allowlist
+// installs cleanly and then fails at first import on the user's machine.
+function isPacked(relativePath) {
+  return pkg.files.some((entry) =>
+    entry.endsWith('/') ? relativePath.startsWith(entry) : relativePath === entry
+  );
+}
+for (const entry of pkg.files) {
+  if (!entry.endsWith('.mjs')) continue;
+  const source = readFileSync(resolve(root, entry), 'utf8');
+  for (const match of source.matchAll(/(?:from\s+|import\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)) {
+    const target = resolve(dirname(resolve(root, entry)), match[1])
+      .slice(root.length + 1)
+      .split('\\')
+      .join('/');
+    if (!isPacked(target)) {
+      fail(`packed module ${entry} imports ${target}, which is not in package files`);
+    }
+  }
+}
 for (const forbiddenPath of [
   '.codex/',
   'AGENTS.md',
