@@ -194,3 +194,34 @@ test("main writes a dry-run report file without OrgX credentials", async () => {
   assert.equal(written.work_graph_fingerprint, result.work_graph_fingerprint);
   assert.equal(written.report.raw_transcripts_sent, false);
 });
+
+test("spool replay posts settle only on a digest-bound ACK (plan v3 §5.6)", async () => {
+  const { postWorkGraphReport } = await import("./orgx-work-graph-reconcile.mjs");
+  const { payloadDigest } = await import("../../lib/peer/deliveryAck.mjs");
+  const report = { work_graph_fingerprint: "wgf_test" };
+  const bare = async () => ({ ok: true, status: 202, json: async () => ({ ok: true }) });
+  await assert.rejects(
+    postWorkGraphReport({ report, baseUrl: "https://x.test", apiKey: "k", fetchImpl: bare, requireAck: true }),
+    /not acknowledged/
+  );
+  await postWorkGraphReport({ report, baseUrl: "https://x.test", apiKey: "k", fetchImpl: bare });
+  const acking = async (_url, init) => ({
+    ok: true,
+    status: 202,
+    json: async () => ({
+      ack: {
+        operation_id: init.headers["Idempotency-Key"],
+        payload_digest: payloadDigest(init.body),
+        disposition: "persisted",
+      },
+    }),
+  });
+  const body = await postWorkGraphReport({
+    report,
+    baseUrl: "https://x.test",
+    apiKey: "k",
+    fetchImpl: acking,
+    requireAck: true,
+  });
+  assert.equal(body.ack.disposition, "persisted");
+});
