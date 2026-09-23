@@ -10,5 +10,5 @@
     "work_graph:reconcile"
   ],
   "driver_ids": ["codex"],
-  "notes": "fingerprint + signature populated by the npm prepublish step; dev builds ship unsigned and receive 'degraded' status from the OrgX server in permissive mode."
+  "notes": "fingerprint + signature are stamped by scripts/stamp-manifest.mjs in the release workflow immediately before npm pack; dev builds ship empty and receive 'degraded' status from the OrgX server in permissive mode."
 }

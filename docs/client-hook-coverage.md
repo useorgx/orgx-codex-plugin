@@ -16,9 +16,11 @@ verification does not by itself prove the newly packed plugin has run inside a
 fresh installed Codex session.
 
 This Codex package still does not package first-class ChatGPT or Cursor
-hook/config artifacts. Claude Code is covered by the separate
-`orgx-claude-code-plugin` install, which now has its own verified Stop-hook
-reconciliation path. Cursor is verified through its native MCP and repo-local
+hook/config artifacts. The separate `orgx-claude-code-plugin` is a static,
+status-only connector with no lifecycle hooks: Wizard refuses to install a
+Claude bundle that contains hooks, so there is no Claude Stop-hook
+reconciliation path from that plugin. Claude Code session capture, where
+enabled, comes from Wizard's own runtime hooks. Cursor is verified through its native MCP and repo-local
 rules/commands surfaces, not a passive lifecycle hook. ChatGPT still needs a
 verified app action-list refresh before first-class chronicle UX is proven. The
 current blocker is not the hosted MCP descriptor; it is client-side refresh,
@@ -167,7 +169,8 @@ Last checked: 2026-06-05 10:50 America/Chicago.
 - `npm run check`, `npm test`, the opt-in real-Wizard integration test, an npm
   package install, and the isolated native first-turn canary passed for this
   source revision. Global install and production proof remain separate.
-- Claude Code PR #14
+- Historical, superseded: the Claude plugin later became status-only and
+  Wizard now rejects Claude bundles with hooks. Claude Code PR #14
   (`https://github.com/useorgx/orgx-claude-code-plugin/pull/14`) merged
   Stop-hook reconciliation. Installed wizard source and Claude cache paths at
   `0.1.3` passed `npm run check`. Running the active Claude cache Stop
