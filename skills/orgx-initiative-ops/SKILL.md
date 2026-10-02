@@ -44,8 +44,11 @@ Use this skill when the task is tied to OrgX execution state rather than just lo
 
 6. Close the loop:
 - Launching or spawning work starts it; it does not finish it. Report it as
-  started, keep the returned run or task ID, and re-read it with `orgx_inspect`
-  before claiming any outcome.
+  started, keep the returned run ID, and check it with `orgx_command_status`
+  (`kind: "run"`, or `kind: "decision"` for a decision) before claiming any
+  outcome. When `next_poll_after_ms` is a number, check again after that many
+  milliseconds; `null` means the state is final. Use `orgx_inspect` for
+  anything without a run, decision or command ID.
 - When a task is truly done, verify it first.
 - Then update completion state in OrgX if the current task is known.
 
