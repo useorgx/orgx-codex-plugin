@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   deriveGraphFromRecords,
   buildExecutionGraphEvent,
+  executionGraphIdempotencyKey,
   maybeEmitExecutionGraph,
+  postExecutionGraph,
 } from "./emit-execution-graph.mjs";
 
 const records = [
@@ -104,4 +106,37 @@ test("maybeEmitExecutionGraph: a failing POST never throws", async () => {
     fetchImpl,
   });
   assert.equal(res.skipped, "emit_failed");
+});
+
+test("postExecutionGraph: Idempotency-Key is stable per run + graph bytes", async () => {
+  const seen = [];
+  const fetchImpl = async (_url, init) => {
+    seen.push({ key: init.headers["Idempotency-Key"], body: init.body });
+    return { ok: true, json: async () => ({ data: {} }) };
+  };
+  const env = { ORGX_INITIATIVE_ID: "9e52303c-430a-4472-a5ae-ec3ab169e4f3" };
+  const event = buildExecutionGraphEvent({ records, env, sessionId: "s1" });
+  const retried = buildExecutionGraphEvent({ records, env, sessionId: "s1" });
+  const grown = buildExecutionGraphEvent({
+    records: [...records, { event: "post_tool_use", session_id: "s1", summary: { tool_name: "Read" } }],
+    env,
+    sessionId: "s1",
+  });
+
+  for (const e of [event, retried, grown]) {
+    await postExecutionGraph({ event: e, apiKey: "k", fetchImpl });
+  }
+
+  assert.match(seen[0].key, /^execution-graph:s1:[0-9a-f]{32}$/);
+  assert.equal(seen[1].key, seen[0].key, "a retry of the same graph reuses its key");
+  assert.equal(seen[1].body, seen[0].body);
+  assert.notEqual(seen[2].key, seen[0].key, "a different graph gets a new key");
+  assert.equal(
+    executionGraphIdempotencyKey(event, seen[0].body),
+    seen[0].key
+  );
+  assert.match(
+    executionGraphIdempotencyKey({ ...event, run_id: "run-7" }, seen[0].body),
+    /^execution-graph:run-7:/
+  );
 });

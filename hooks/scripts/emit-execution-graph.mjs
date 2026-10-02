@@ -21,6 +21,8 @@
  * reconcile flow.
  */
 
+import { payloadDigest } from "../../lib/peer/deliveryAck.mjs";
+
 const SCHEMA_VERSION = "1.0.0";
 const VALID_SOURCE_CLIENTS = new Set([
   "openclaw",
@@ -128,6 +130,16 @@ export function buildExecutionGraphEvent({ records, env, sessionId }) {
   return event;
 }
 
+/**
+ * Stable Idempotency-Key for one execution-graph event: the run (or session
+ * correlation) it describes plus the digest of the exact bytes sent. A retry of
+ * the same reconcile pass replays; a graph that grew gets a new key.
+ */
+export function executionGraphIdempotencyKey(event, bodyText) {
+  const identity = pickString(event?.run_id, event?.correlation_id) || "unscoped";
+  return `execution-graph:${identity}:${payloadDigest(bodyText).slice(7, 39)}`;
+}
+
 /** POST the execution-graph event. Mirrors postWorkGraphReport's conventions. */
 export async function postExecutionGraph({
   event,
@@ -139,9 +151,11 @@ export async function postExecutionGraph({
   const normalizedBaseUrl = pickString(baseUrl, "https://www.useorgx.com").replace(/\/+$/, "");
   const token = pickString(apiKey);
   if (!token) throw new Error("ORGX_API_KEY is required to emit the execution graph");
+  const bodyText = JSON.stringify(event);
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
+    "Idempotency-Key": executionGraphIdempotencyKey(event, bodyText),
   };
   const uid = pickString(userId);
   if (uid) headers["X-Orgx-User-Id"] = uid;
@@ -149,7 +163,7 @@ export async function postExecutionGraph({
   const response = await fetchImpl(`${normalizedBaseUrl}/api/client/live/execution-graph`, {
     method: "POST",
     headers,
-    body: JSON.stringify(event),
+    body: bodyText,
   });
   const body = await response.json().catch(async () => ({
     text: await response.text().catch(() => ""),
