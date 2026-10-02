@@ -78,7 +78,8 @@ durable in OrgX while the session is still fresh.
 - Do not claim OrgX was updated unless an MCP tool or API call actually
   succeeded.
 - Do not claim delegated or spawned work finished because the spawn call
-  succeeded: that only means it started.
+  succeeded: that only means it started. Check it with `orgx_command_status`
+  (`kind: "run"` and the returned run ID) until `next_poll_after_ms` is `null`.
 
 8. Preserve Work Graph continuity:
 - When a Work Graph report is generated, include its `work_graph_fingerprint`
