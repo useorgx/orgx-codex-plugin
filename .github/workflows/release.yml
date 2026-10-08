@@ -100,7 +100,7 @@ jobs:
 
       - name: Verify registry version
         run: |
-          for _ in {1..12}; do
+          for _ in {1..60}; do
             actual="$(npm view "${{ steps.release.outputs.name }}@${{ steps.release.outputs.version }}" version 2>/dev/null || true)"
             test "$actual" = "${{ steps.release.outputs.version }}" && exit 0
             sleep 5
@@ -114,7 +114,6 @@ jobs:
           path: artifacts/*.tgz
 
       - name: Create GitHub Release
-        if: steps.registry.outputs.already_published != 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: v${{ steps.release.outputs.version }}
