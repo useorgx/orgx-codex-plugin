@@ -74,7 +74,7 @@
     "peer:start": "node lib/peer/cli.mjs"
   },
   "dependencies": {
-    "@sentry/node": "10.65.0",
+    "@sentry/node": "11.4.0",
     "@useorgx/orgx-gateway-sdk": "0.1.0-alpha.12",
     "ws": "^8.18.3"
   },
