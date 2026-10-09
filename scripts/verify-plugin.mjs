@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateListingMetadata } from './validate-listing-metadata.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -61,6 +62,12 @@ const marketplace = readJson(marketplacePath);
 const codexHooks = readJson(codexHooksPath);
 const operatorReportingGates = readJson(operatorReportingGatesPath);
 const clientHookCoverage = readFileSync(clientHookCoveragePath, 'utf8');
+
+try {
+  validateListingMetadata(manifest);
+} catch (error) {
+  fail(error.message);
+}
 
 for (const section of ['dependencies', 'optionalDependencies']) {
   for (const [name, specifier] of Object.entries(pkg[section] ?? {})) {
@@ -128,7 +135,7 @@ if (
       prompt.includes('get_operator_chronicle') &&
       prompt.includes('orgx_recommend') &&
       prompt.includes('mode="morning_brief"') &&
-      prompt.includes('reportingNarrative.briefMarkdown'),
+      prompt.includes('chronicle.reportingNarrative.briefMarkdown'),
   )
 ) {
   fail('defaultPrompt chronicle prompt must document direct tool and stale-client fallback');
@@ -143,6 +150,7 @@ const interfaceFields = [
   'developerName',
   'category',
   'websiteURL',
+  'supportURL',
   'privacyPolicyURL',
   'termsOfServiceURL',
   'brandColor',

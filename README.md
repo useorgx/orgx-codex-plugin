@@ -22,6 +22,13 @@ in the official Codex plugins docs:
 It is the Codex counterpart to the existing OrgX Claude Code and OpenClaw
 plugin repos.
 
+Distribute this native runtime package through manual installation or the local
+Codex marketplace. It includes lifecycle hooks, which the
+[public directory submission requirements](https://developers.openai.com/plugins/deploy/submission)
+exclude. The separate ChatGPT directory candidate uses a hook-free package;
+valid listing metadata here does not make this runtime package eligible for
+public directory submission.
+
 ## Structure
 
 ```text
