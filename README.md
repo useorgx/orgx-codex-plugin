@@ -52,13 +52,13 @@ blockers, and completion events.
 
 For reporting or daily-brief style questions, start with
 `get_operator_chronicle` when the live OrgX MCP tool map exposes it. Its
-`reportingNarrative.briefMarkdown` is the canonical concise answer for
+`chronicle.reportingNarrative.briefMarkdown` is the canonical concise answer for
 decisions made yesterday, the past week, the past 30 days, artifacts, PR
 receipts, velocity, top priorities, goals, and gaps.
 
 For a selected `commander` connection, `orgx_recommend` with
 `mode: "morning_brief"` is another reporting read when actually callable.
-Its narrative is at `data.reportingNarrative.briefMarkdown`. Refresh the MCP
+Its narrative is at `chronicle.reportingNarrative.briefMarkdown`. Refresh the MCP
 connection when its callable inventory differs from the selected profile.
 
 ## Runtime hooks and first-turn context
@@ -339,8 +339,9 @@ This follows current OrgX MCP docs and lets OAuth happen in-browser on first
 use. After bootstrap, the preferred reporting first call is
 `get_operator_chronicle` with `period: "30d"` when the client exposes it.
 When the hosted MCP bootstrap advertises `get_operator_chronicle` but a client
-session still exposes only older OrgX tools, call `orgx_recommend` with
-`mode: "morning_brief"` as the compatibility path. Passive runtime hooks are a
+session still exposes only older OrgX tools, call `orgx_recommend` only when
+actually callable, with `mode: "morning_brief"`. Read its
+`chronicle.reportingNarrative.briefMarkdown`. Passive runtime hooks are a
 reconciliation backstop for session evidence; they are not a substitute for MCP
 read/write calls during the live operator report.
 

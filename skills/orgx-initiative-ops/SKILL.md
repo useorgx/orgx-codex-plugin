@@ -23,7 +23,7 @@ invent an alias or weaken an autonomous run's signed schema policy.
   active AI client session has a stale callable tool list, immediately use
   `orgx_recommend` only when that name is actually callable,
   with `mode: "morning_brief"`, and report
-  the returned `data.reportingNarrative.briefMarkdown`. Do not wait for the client to
+  the returned `chronicle.reportingNarrative.briefMarkdown`. Do not wait for the client to
   reconnect before answering the operator.
 - If an initiative, workstream, task, blocker, or decision is named, treat OrgX as the source of truth for current status.
 
