@@ -346,6 +346,17 @@ session still exposes only older OrgX tools, call `orgx_recommend` with
 reconciliation backstop for session evidence; they are not a substitute for MCP
 read/write calls during the live operator report.
 
+The `commander` selector serves the peer's signed runtime contracts. The default
+endpoint exposes named workflow operations and portable receipt imports; keep
+the peer's selector unless its signed manifest and payloads change together.
+Refresh authenticated `tools/list` after updating the plugin or MCP server.
+`server.json` describes the default catalog, not this connection's inventory.
+
+`orgx_submit_receipt` records condensed runtime reporting; portable
+`orgx_submit_work_receipt` imports an entire receipt document. The Gateway
+terminal outbox and passive hooks use independent HTTP paths. Autonomous
+execution continues to enforce its signed tool names and schemas.
+
 ## Sources used
 
 - Official Codex plugin docs:

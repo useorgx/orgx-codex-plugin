@@ -13,7 +13,8 @@ const execFile = promisify(execFileCallback);
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 const SERVER_JSON_URL = "https://mcp.useorgx.com/server.json";
-const REQUIRED_CHRONICLE_TOOLS = ["get_operator_chronicle", "orgx_recommend"];
+const LEGACY_CHRONICLE_TOOLS = ["get_operator_chronicle", "orgx_recommend"];
+const OPERATION_CHRONICLE_TOOLS = ["orgx_get_operator_brief", "orgx_get_next_actions"];
 const OPERATOR_REPORTING_GATES_PATH = fileURLToPath(
   new URL("../docs/operator-reporting-gates.json", import.meta.url)
 );
@@ -330,19 +331,24 @@ export function classifyClaudeMcpGet(result) {
   });
 }
 
-async function inspectHostedMcp({ fetchImpl = fetch } = {}) {
+export async function inspectHostedMcp({ fetchImpl = fetch } = {}) {
   try {
     const response = await fetchImpl(SERVER_JSON_URL);
-    const body = await response.text();
-    const hasRequiredTools = REQUIRED_CHRONICLE_TOOLS.every((tool) => body.includes(tool));
+    const body = JSON.parse(await response.text());
+    const advertisedTools = new Set((Array.isArray(body.tools) ? body.tools : [])
+      .map((tool) => tool?.name ?? tool?.id)
+      .filter((name) => typeof name === "string"));
+    const operationCatalog = OPERATION_CHRONICLE_TOOLS.every((tool) => advertisedTools.has(tool));
+    const legacyCatalog = LEGACY_CHRONICLE_TOOLS.every((tool) => advertisedTools.has(tool));
+    const hasReportingTools = operationCatalog || legacyCatalog;
     return gate({
       id: "hosted_mcp_descriptor",
       client: "server",
-      status: response.ok && hasRequiredTools ? "verified" : "open",
-      evidence: `server.json status=${response.status}; required chronicle tools present=${hasRequiredTools}`,
-      nextStep: hasRequiredTools
-        ? "Keep hosted MCP descriptors aligned with chronicle tooling."
-        : "Update hosted MCP descriptor so get_operator_chronicle and orgx_recommend are discoverable.",
+      status: response.ok && hasReportingTools ? "verified" : "open",
+      evidence: `server.json status=${response.status}; reporting_catalog=${operationCatalog ? "operation-v1" : legacyCatalog ? "legacy-v1" : "missing"}; authenticated_client_inventory=not_probed`,
+      nextStep: hasReportingTools
+        ? "Verify this client's selected runtime profile through authenticated tools/list; the public descriptor does not prove its inventory."
+        : "Check hosted descriptor reporting operations, then verify the client's selected profile through authenticated tools/list.",
     });
   } catch (error) {
     return gate({
