@@ -56,12 +56,10 @@ For reporting or daily-brief style questions, start with
 decisions made yesterday, the past week, the past 30 days, artifacts, PR
 receipts, velocity, top priorities, goals, and gaps.
 
-If an AI client has not refreshed its callable MCP schema after OrgX publishes
-the direct tool, use the existing `orgx_recommend` / `_orgx_recommend` fallback
-with `mode: "morning_brief"` and present the same
-`reportingNarrative.briefMarkdown`. Direct `get_operator_chronicle` calls remain
-preferred when callable; the fallback prevents a stale plugin session from
-blocking the report.
+For a selected `commander` connection, `orgx_recommend` with
+`mode: "morning_brief"` is another reporting read when actually callable.
+Its narrative is at `data.reportingNarrative.briefMarkdown`. Refresh the MCP
+connection when its callable inventory differs from the selected profile.
 
 ## Runtime hooks and first-turn context
 
