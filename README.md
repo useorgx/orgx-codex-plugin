@@ -222,7 +222,8 @@ v2 success value is `authStatus: "oAuth"`. Installers that separately inspect
 The command needs no Gateway key. It exits zero only when the checkout is
 valid, Codex is ChatGPT-authenticated, current app-server RPC works, and a
 read-only, shell-disabled app-server thread proves the authenticated OrgX server
-exposes exactly the bounded `orgx_bootstrap` MCP tool. This is an MCP inventory
+exposes exactly the bounded, read-only `orgx_get_workspace_context` MCP tool
+(the hosted `v2` catalog no longer registers `orgx_bootstrap`). This is an MCP inventory
 proof, not a claim that Codex has no other non-shell native tools. Real runs
 still compare every MCP tool schema to the signed per-run manifest.
 
