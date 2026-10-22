@@ -5,7 +5,11 @@ description: Use when a Codex execution should report progress, artifacts, block
 
 # OrgX Runtime Reporting
 
-Use this skill when Codex should keep OrgX updated during execution.
+Use this skill when Codex should keep OrgX updated during execution within the
+user's authorized tracking scope. Reporting is not a prerequisite for local
+work, PR updates, or an authorized merge. Reuse prior authorization; do not ask
+again for each milestone. If reporting is unavailable, keep useful evidence
+locally, continue independent work, and describe the tracking gap once.
 
 ## Reporting contract
 
@@ -69,13 +73,17 @@ durable in OrgX while the session is still fresh.
 - `completed`
 
 4. Register proof of work:
-- When you produce a file, diff, document, screenshot, or report, register it as an artifact with a concrete summary.
+- Register useful evidence at meaningful milestones with a concrete summary;
+  batch related files rather than treating every edit as a separate artifact.
 
 5. Handle blockers structurally:
-- If judgment is required, request a decision with explicit options.
-- A decision waits on a person: report the blocker as waiting on them with the
+- If an unresolved choice requires human authority, request a decision with
+  explicit options. Routine implementation choices and actions already
+  authorized do not need a new approval.
+- Report the work that depends on a pending human decision as waiting with the
   decision's `review_url`. `orgx_decide` approve/reject only returns that link;
-  never report a decision as approved or rejected yourself.
+  never report a decision as approved or rejected yourself. Continue work that
+  does not depend on that decision.
 - If context is missing, report the exact missing dependency.
 
 6. Close execution cleanly:
