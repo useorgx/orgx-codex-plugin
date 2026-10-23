@@ -75,6 +75,27 @@ durable in OrgX while the session is still fresh.
 4. Register proof of work:
 - Register useful evidence at meaningful milestones with a concrete summary;
   batch related files rather than treating every edit as a separate artifact.
+- For a user-requested output attachment, use the existing `orgx_update_work`
+  when it is callable in the current connection. Inspect the current OrgX work
+  target first. Supply its persisted `type`, `id`, `workspace_id`, a stable
+  `idempotency_key`, and one `artifact`; omit `fields` for this call.
+- The artifact takes `name`, registered `artifact_type`, `location` containing
+  exactly one `artifact_url` or `external_url`, optional `description` and
+  `preview_markdown`, and optional `output_front_door`. A local path is not an
+  uploaded durable output. The front door contains a plain `answer`, at most
+  three existing `decisionId` references with `question`, `recommendation` and
+  `impact`, and producer-reported `checked` / `notChecked` notes.
+- Context state, run cost, evaluator scores and client acceptance come from
+  server records. Do not submit them as producer authority. If OrgX context
+  could not load, say so before the plan and do not assume workspace team,
+  budget, brand or open work.
+- Reuse the exact payload and key after an ambiguous attachment failure.
+  Deliberately revised output gets a new key. Require a stored artifact UUID
+  in the response, then inspect it with `orgx_inspect` and present the canonical
+  output summary and review link. Attachment does not approve or complete work.
+- A connection without this admitted operation needs a matching MCP deployment
+  and inventory refresh. Keep the output available and report the exact gap;
+  never guess an alias or claim that a local receipt proved attachment.
 
 5. Handle blockers structurally:
 - If an unresolved choice requires human authority, request a decision with
@@ -94,6 +115,8 @@ durable in OrgX while the session is still fresh.
   classify: name decisions, artifacts, blockers, next actions, and verification.
 - Do not claim OrgX was updated unless an MCP tool or API call actually
   succeeded.
+- Wizard remains the owner of passive capture. Do not add a second plugin
+  capture hook or treat the gateway's terminal receipt outbox as output upload.
 - Do not claim delegated or spawned work finished because the spawn call
   succeeded: that only means it started. Check it with `orgx_command_status`
   (`kind: "run"` and the returned run ID) until `next_poll_after_ms` is `null`.
