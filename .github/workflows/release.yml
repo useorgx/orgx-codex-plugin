@@ -24,6 +24,8 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - name: Validate release identity
+        run: node scripts/release-gate.mjs --validate
       - name: Stamp manifest fingerprint from the packed file set
         run: node scripts/stamp-manifest.mjs
         env:
@@ -37,7 +39,7 @@ jobs:
 
   release:
     needs: validate
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -57,66 +59,54 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
+      - name: Check immutable release identity
+        id: release
+        run: node scripts/release-gate.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Install trusted publishing npm
+        if: steps.release.outputs.publish == 'true'
         run: npm install --global npm@11.18.0
 
       - name: Download validated package
+        if: steps.release.outputs.publish == 'true'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: validated-release-tarball
           path: artifacts
 
-      - name: Resolve release metadata
-        id: release
-        run: |
-          node - <<'NODE' >> "$GITHUB_OUTPUT"
-          const { readFileSync } = require('node:fs');
-          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-          const manifest = JSON.parse(readFileSync('plugin.manifest.json', 'utf8'));
-          const plugin = JSON.parse(readFileSync('.codex-plugin/plugin.json', 'utf8'));
-          if (pkg.version !== manifest.version || pkg.version !== plugin.version) {
-            throw new Error(`release versions disagree: package=${pkg.version}, manifest=${manifest.version}, plugin=${plugin.version}`);
-          }
-          if (process.env.GITHUB_REF_TYPE === 'tag' && process.env.GITHUB_REF_NAME !== `v${pkg.version}`) {
-            throw new Error(`tag ${process.env.GITHUB_REF_NAME} does not match package v${pkg.version}`);
-          }
-          console.log(`name=${pkg.name}`);
-          console.log(`version=${pkg.version}`);
-          console.log(`tag=${pkg.version.includes('-') ? 'alpha' : 'latest'}`);
-          NODE
-
-      - name: Check registry
-        id: registry
-        run: |
-          if npm view "${{ steps.release.outputs.name }}@${{ steps.release.outputs.version }}" version >/dev/null 2>&1; then
-            echo "already_published=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "already_published=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Publish to npm
-        if: steps.registry.outputs.already_published != 'true'
-        run: npm publish ./artifacts/*.tgz --access public --tag "${{ steps.release.outputs.tag }}"
+        if: steps.release.outputs.publish == 'true'
+        run: npm publish ./artifacts/*.tgz --access public --provenance --tag "$NPM_TAG"
+        env:
+          NPM_TAG: ${{ steps.release.outputs.npm_tag }}
 
       - name: Verify registry version
+        if: steps.release.outputs.publish == 'true'
         run: |
           for _ in {1..60}; do
-            actual="$(npm view "${{ steps.release.outputs.name }}@${{ steps.release.outputs.version }}" version 2>/dev/null || true)"
-            test "$actual" = "${{ steps.release.outputs.version }}" && exit 0
+            actual="$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null || true)"
+            test "$actual" = "$PACKAGE_VERSION" && exit 0
             sleep 5
           done
           exit 1
+        env:
+          PACKAGE_NAME: ${{ steps.release.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.release.outputs.version }}
 
       - name: Upload Artifact
+        if: steps.release.outputs.publish == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-tarball
           path: artifacts/*.tgz
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          tag_name: v${{ steps.release.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          files: artifacts/*.tgz
-          generate_release_notes: true
+        if: steps.release.outputs.publish == 'true'
+        # Create only: a concurrent release fails instead of editing notes/assets.
+        run: gh release create "$RELEASE_TAG" ./artifacts/*.tgz --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
