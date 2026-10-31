@@ -7,17 +7,26 @@ description: Use when Codex is working on a repo or task that is scoped to an Or
 
 Use this skill when the task is tied to OrgX execution state rather than just local code.
 
+The bundled MCP connection requests the explicit `commander` runtime
+profile. Use only tools actually exposed in that connection. A missing
+tool may need connection refresh or a coordinated plugin/server update. Report
+that tracking limitation and continue independent authorized repo work; never
+invent an alias or weaken an autonomous run's signed schema policy.
+
 ## Workflow
 
-1. Orient before editing:
-- Call the OrgX workspace or initiative summary tools first.
+1. Orient when OrgX state is relevant:
+- Read the relevant workspace or initiative summary before changing OrgX state
+  or relying on its status. Reuse context already read in this session when it
+  is sufficient; local edits do not require a new OrgX read.
 - For broad status/reporting questions, prefer `get_operator_chronicle` first
   when available; it is the canonical decision, artifact, PR, goal, gap, and
   priority readout.
 - If the hosted OrgX MCP bootstrap advertises `get_operator_chronicle` but the
   active AI client session has a stale callable tool list, immediately use
-  `orgx_recommend` or `_orgx_recommend` with `mode: "morning_brief"` and report
-  the returned `reportingNarrative.briefMarkdown`. Do not wait for the client to
+  `orgx_recommend` only when that name is actually callable,
+  with `mode: "morning_brief"`, and report
+  the returned `chronicle.reportingNarrative.briefMarkdown`. Do not wait for the client to
   reconnect before answering the operator.
 - If an initiative, workstream, task, blocker, or decision is named, treat OrgX as the source of truth for current status.
 
@@ -31,16 +40,22 @@ Use this skill when the task is tied to OrgX execution state rather than just lo
 
 4. Report concrete progress:
 - Use OrgX progress/activity tools for real execution milestones.
-- Register artifacts when code, docs, plans, screenshots, or reports are produced.
+- Register useful artifacts within the authorized tracking scope. Batch related
+  evidence at a meaningful milestone instead of writing on every file edit.
+- Missing IDs or unavailable reporting tools do not block implementation,
+  verification, PR updates, or an otherwise authorized merge. Report pending
+  tracking separately from the actual work outcome.
 
 5. Surface decisions explicitly:
-- If work is blocked on judgment, request a decision with clear options and impact.
+- Request a decision only when an unresolved choice needs human authority.
+  Resolve routine implementation choices within the user's scope, and honor
+  approval already given instead of requesting it again.
 - Do not bury blockers in prose.
 - Only a person settles a decision. `orgx_decide` with `action: "approve"` or
   `"reject"` never approves or rejects anything: it returns the decision's
-  `review_url` in OrgX. Give the person that link, report the work as waiting
-  on them, and never say a decision was approved or rejected unless OrgX shows
-  it settled.
+  `review_url` in OrgX. Give the person that link and report only the dependent
+  work as waiting on them. Continue independent work, and never say a decision
+  was approved or rejected unless OrgX shows it settled.
 
 6. Close the loop:
 - Launching or spawning work starts it; it does not finish it. Report it as
@@ -57,8 +72,7 @@ Use this skill when the task is tied to OrgX execution state rather than just lo
 - Never assume OrgX entity state from memory alone.
 - Never mark work complete without verification.
 - Prefer one verified task completion over broad unverified status claims.
-- If a write's outcome is unclear (timeout, dropped connection), retry it with
-  the same `idempotency_key`: OrgX replays the stored result instead of
-  duplicating the write. Reusing a key with a different body is refused (422);
-  a 409 means the first attempt is still in flight.
+- If a write's outcome is unclear, reconcile the returned command or run first.
+  Retry only if that operation documents replay support, with identical input
+  and the same idempotency key; never send it through another tool name.
 - Use `source_client=codex` whenever the tool supports client attribution.

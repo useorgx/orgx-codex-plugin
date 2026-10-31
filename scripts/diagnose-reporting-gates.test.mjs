@@ -12,6 +12,7 @@ import {
   inspectClientHookSurfaceContract,
   inspectCodexHooks,
   inspectCursorConfig,
+  inspectHostedMcp,
   main,
   stripAnsi,
   summarizeGates,
@@ -21,6 +22,28 @@ const REQUIRED_TOOL_FIXTURE = [
   { name: "get_operator_chronicle" },
   { name: "orgx_recommend" },
 ];
+
+test("hosted descriptor recognizes operation tools without claiming legacy client compatibility", async () => {
+  const gate = await inspectHostedMcp({ fetchImpl: async () => ({
+    ok: true, status: 200,
+    text: async () => JSON.stringify({ tools: [
+      { id: "orgx_get_operator_brief" }, { id: "orgx_get_next_actions" },
+    ] }),
+  }) });
+  assert.equal(gate.status, "verified");
+  assert.match(gate.evidence, /reporting_catalog=operation-v1/);
+  assert.match(gate.evidence, /authenticated_client_inventory=not_probed/);
+  assert.match(gate.nextStep, /authenticated tools\/list/);
+});
+
+test("tool names mentioned in descriptor descriptions are not callable inventory", async () => {
+  const gate = await inspectHostedMcp({ fetchImpl: async () => ({
+    ok: true, status: 200,
+    text: async () => JSON.stringify({ tools: [], description: "get_operator_chronicle orgx_recommend" }),
+  }) });
+  assert.equal(gate.status, "open");
+  assert.match(gate.evidence, /reporting_catalog=missing/);
+});
 
 test("stripAnsi removes terminal control codes", () => {
   assert.equal(stripAnsi("\u001b[2K\u001b[1AStatus: Connected\r\n"), "Status: Connected");

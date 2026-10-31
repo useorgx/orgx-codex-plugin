@@ -22,6 +22,13 @@ in the official Codex plugins docs:
 It is the Codex counterpart to the existing OrgX Claude Code and OpenClaw
 plugin repos.
 
+Distribute this native runtime package through manual installation or the local
+Codex marketplace. It includes lifecycle hooks, which the
+[public directory submission requirements](https://developers.openai.com/plugins/deploy/submission)
+exclude. The separate ChatGPT directory candidate uses a hook-free package;
+valid listing metadata here does not make this runtime package eligible for
+public directory submission.
+
 ## Structure
 
 ```text
@@ -50,18 +57,25 @@ workstream, milestone, task, blocker, or decision.
 Keep OrgX updated during live Codex execution with progress, artifacts,
 blockers, and completion events.
 
+After the matching MCP deployment, `commander` exposes the existing
+`orgx_update_work` operation for one reviewable output attachment: current work
+target, workspace, stable retry key, durable output location and optional plain
+answer, linked decisions and source notes. Inspect the stored artifact to read
+its canonical context, files and run receipt. Attaching leaves approval and
+completion pending. The runtime skill documents the bounded payload and retry
+behavior; Wizard continues to own passive capture, and the peer's terminal
+receipt outbox does not upload files.
+
 For reporting or daily-brief style questions, start with
 `get_operator_chronicle` when the live OrgX MCP tool map exposes it. Its
-`reportingNarrative.briefMarkdown` is the canonical concise answer for
+`chronicle.reportingNarrative.briefMarkdown` is the canonical concise answer for
 decisions made yesterday, the past week, the past 30 days, artifacts, PR
 receipts, velocity, top priorities, goals, and gaps.
 
-If an AI client has not refreshed its callable MCP schema after OrgX publishes
-the direct tool, use the existing `orgx_recommend` / `_orgx_recommend` fallback
-with `mode: "morning_brief"` and present the same
-`reportingNarrative.briefMarkdown`. Direct `get_operator_chronicle` calls remain
-preferred when callable; the fallback prevents a stale plugin session from
-blocking the report.
+For a selected `commander` connection, `orgx_recommend` with
+`mode: "morning_brief"` is another reporting read when actually callable.
+Its narrative is at `chronicle.reportingNarrative.briefMarkdown`. Refresh the MCP
+connection when its callable inventory differs from the selected profile.
 
 ## Runtime hooks and first-turn context
 
@@ -217,7 +231,8 @@ v2 success value is `authStatus: "oAuth"`. Installers that separately inspect
 The command needs no Gateway key. It exits zero only when the checkout is
 valid, Codex is ChatGPT-authenticated, current app-server RPC works, and a
 read-only, shell-disabled app-server thread proves the authenticated OrgX server
-exposes exactly the bounded `orgx_bootstrap` MCP tool. This is an MCP inventory
+exposes exactly the bounded, read-only `orgx_get_workspace_context` MCP tool
+(the hosted `v2` catalog no longer registers `orgx_bootstrap`). This is an MCP inventory
 proof, not a claim that Codex has no other non-shell native tools. Real runs
 still compare every MCP tool schema to the signed per-run manifest.
 
@@ -341,10 +356,22 @@ This follows current OrgX MCP docs and lets OAuth happen in-browser on first
 use. After bootstrap, the preferred reporting first call is
 `get_operator_chronicle` with `period: "30d"` when the client exposes it.
 When the hosted MCP bootstrap advertises `get_operator_chronicle` but a client
-session still exposes only older OrgX tools, call `orgx_recommend` with
-`mode: "morning_brief"` as the compatibility path. Passive runtime hooks are a
+session still exposes only older OrgX tools, call `orgx_recommend` only when
+actually callable, with `mode: "morning_brief"`. Read its
+`chronicle.reportingNarrative.briefMarkdown`. Passive runtime hooks are a
 reconciliation backstop for session evidence; they are not a substitute for MCP
 read/write calls during the live operator report.
+
+The `commander` selector serves the peer's signed runtime contracts. The default
+endpoint exposes named workflow operations and portable receipt imports; keep
+the peer's selector unless its signed manifest and payloads change together.
+Refresh authenticated `tools/list` after updating the plugin or MCP server.
+`server.json` describes the default catalog, not this connection's inventory.
+
+`orgx_submit_receipt` records condensed runtime reporting; portable
+`orgx_submit_work_receipt` imports an entire receipt document. The Gateway
+terminal outbox and passive hooks use independent HTTP paths. Autonomous
+execution continues to enforce its signed tool names and schemas.
 
 ## Sources used
 
@@ -355,3 +382,12 @@ read/write calls during the live operator report.
 - Existing OrgX references:
   - `orgx-claude-code-plugin`
   - `orgx-openclaw-plugin`
+
+## About OrgX
+
+[OrgX](https://useorgx.com) is proof for AI-delivered work — the operating record your agents and tools share. Agents in ChatGPT, Claude, Cursor, and Codex work from one record of decisions, approvals, and work receipts.
+
+- [OrgX FAQ](https://useorgx.com/faq): what it is, who it's for, and what it costs
+- [Agent work receipts](https://useorgx.com/agent-work-receipts): how finished agent work is checked and signed off
+- [Pricing](https://useorgx.com/pricing)
+- Hosted MCP server: [useorgx/orgx-mcp](https://github.com/useorgx/orgx-mcp)
